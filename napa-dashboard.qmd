@@ -1,0 +1,397 @@
+---
+title: "NFU Summary Dashboard"
+format:
+  dashboard:
+    orientation: rows
+    theme: minty
+server: shiny
+include-in-header:
+  text: |
+    <script>
+    $(document).on('shown.bs.tab', 'a[data-bs-toggle="tab"]', function (e) {
+      var tabName = $(e.target).text().trim();
+      Shiny.setInputValue('active_tab', tabName);
+    });
+    </script>
+---
+
+```{r}
+#| label: load packages
+#| context: setup
+library(shiny)
+library(bslib)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(readxl)
+library(tidyverse)
+library(patchwork) 
+library(viridis)
+library(wql)
+library(scales)
+library(DT)
+library(plotly)
+library(bsicons)
+library(forcats)
+```
+
+
+```{r}
+#| context: setup
+# Load the  data
+SLS <- read_csv("slslfsflowmean.csv") %>% mutate(towNum = 1)
+mm20 <- read_csv("mm20lfsflowmean.csv") 
+
+# Combine and Clean
+month_order <- c("Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug")
+station_order <- c("340","341", "342", "343", "344", "345", "346", "347", "348", "349")
+
+water_year <- data.frame(
+  wy = c(1995:2026),
+  yearType = c("W","W","W","W","W","AN","D","D","AN","BN","AN","W","D","C","D", "BN", "W", "BN", "D", "C", "C", "BN", "W", "BN","W", "D", "C", "C", "W", "AN", "AN", "AN")  
+)
+
+all_data <- bind_rows(SLS, mm20) %>%
+  mutate(
+    date = mdy(date),
+    wy = as.integer(wy),
+    month = factor(month(date, label = TRUE, abbr = TRUE), levels = month_order),
+    survey_label = paste(source, survey),
+    station = as.character(station),
+    count = as.integer(count),
+    survey = as.integer(survey)
+  ) %>%
+  mutate(survey_label = fct_reorder(survey_label, date, .fun = min)) %>%
+  left_join(water_year, by = "wy")
+
+# 1. Define Region Order and Colors
+region_order <- c(
+  "Central & South Delta", 
+  "Sacramento River System", 
+  "Confluence",
+  "Suisun Bay & Marsh",
+  "Napa River",
+  "San Pablo & Carquinez Strait"
+)
+
+region_colors <- c(
+  "San Pablo & Carquinez Strait"        = "#80b1d3", 
+  "Napa River"                          = "#bebada", 
+  "Suisun Bay & Marsh"                  = "#fdb462", 
+  "Confluence"                          = "#ffffb3", 
+  "Sacramento River System"             = "#fb8072", 
+  "Central & South Delta"               = "#8dd3c7"
+)
+
+```
+
+
+##  {.sidebar}
+
+```{r}
+selectizeInput(
+  "years", "Select Water Year(s):", 
+  choices = c("ALL", sort(unique(all_data$wy), decreasing = TRUE)),
+  selected = "ALL",
+  multiple = TRUE,
+  options = list(plugins = list("remove_button"))
+)
+hr()
+selectizeInput(
+  "regions", "Select Region(s):", 
+  choices = c("ALL", sort(unique(all_data$oldregionupdate))),
+  selected = "Napa River",
+  multiple = TRUE,
+  options = list(plugins = list("remove_button"))
+)
+hr()
+checkboxGroupInput(
+  "source", "Project:",
+  choices = c("20mm", "SLS"),
+  selected = c("20mm", "SLS"),
+  inline = TRUE
+)
+hr()
+uiOutput("survey_ui")
+```
+
+
+# Effort
+## Row {height=20%}
+###  
+
+```{r}
+layout_columns(
+  uiOutput("stat_tows"),
+  uiOutput("stat_surveys"),
+  uiOutput("stat_fish")
+)
+```
+
+## Row {height=80%}
+###  
+```{r}
+DTOutput("effort_table")
+```
+
+
+
+```{r}
+#| context: server
+# This ensures SLS 12/13 (December) come before SLS 1 (January)
+sls_custom_order <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
+
+# --- 2. DYNAMIC TWO-COLUMN SURVEY UI ---
+output$survey_ui <- renderUI({
+  # Filter data based on selected Regions to get relevant survey choices
+  region_data <- if("ALL" %in% input$regions) all_data else all_data %>% filter(oldregionupdate %in% input$regions)
+  
+  choices_20mm <- region_data %>% filter(source == "20mm") %>% pull(survey_label) %>% unique() %>% sort()
+  raw_sls <- region_data %>% filter(source == "SLS") %>% pull(survey_label) %>% unique()
+  choices_sls <- intersect(sls_custom_order, raw_sls)
+  choices_sls <- c(choices_sls, setdiff(raw_sls, sls_custom_order))
+  
+  tagList(
+    tags$label(tags$strong("Select Surveys:")),
+    fluidRow(
+      column(6, 
+        if ("20mm" %in% input$source) {
+          tagList(
+            tags$small(actionLink("all_20", "All"), " | ", actionLink("none_20", "None")),
+            checkboxGroupInput("surveys_20mm", "20mm", choices = choices_20mm, selected = choices_20mm)
+          )
+        }
+      ),
+      column(6, 
+        if ("SLS" %in% input$source) {
+          tagList(
+            tags$small(actionLink("all_sls", "All"), " | ", actionLink("none_sls", "None")),
+            checkboxGroupInput("surveys_sls", "SLS", choices = choices_sls, selected = choices_sls)
+          )
+        }
+      )
+    )
+  )
+})
+
+# --- 3. ALL/NONE LOGIC ---
+observeEvent(input$all_20, {
+  region_data <- if("ALL" %in% input$regions) all_data else all_data %>% filter(oldregionupdate %in% input$regions)
+  choices <- region_data %>% filter(source == "20mm") %>% pull(survey_label) %>% unique() %>% sort()
+  updateCheckboxGroupInput(session, "surveys_20mm", selected = choices)
+})
+observeEvent(input$none_20, { updateCheckboxGroupInput(session, "surveys_20mm", selected = character(0)) })
+
+observeEvent(input$all_sls, {
+  region_data <- if("ALL" %in% input$regions) all_data else all_data %>% filter(oldregionupdate %in% input$regions)
+  raw_sls <- region_data %>% filter(source == "SLS") %>% pull(survey_label) %>% unique()
+  updateCheckboxGroupInput(session, "surveys_sls", selected = intersect(sls_custom_order, raw_sls))
+})
+observeEvent(input$none_sls, { updateCheckboxGroupInput(session, "surveys_sls", selected = character(0)) })
+
+# --- 4. REACTIVE DATASET (Updated for Regions) ---
+all_r <- reactive({
+  selected_surveys <- c(input$surveys_20mm, input$surveys_sls)
+  
+  if (is.null(input$years) || is.null(input$source) || is.null(input$regions) || length(selected_surveys) == 0) {
+    return(all_data[0, ])
+  }
+  
+  df <- all_data
+  
+  if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
+  if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
+  
+  df %>% filter(source %in% input$source, survey_label %in% selected_surveys)
+})
+
+# --- 5. VALUE BOXES ---
+output$stat_tows <- renderUI({
+  data <- all_r()
+  total <- nrow(data)
+  sls_val <- sum(data$source == "SLS")
+  mm_val  <- sum(data$source == "20mm")
+  value_box(
+    title = div("Total Tows", style = "text-align: center;"),
+     value = div(format(total, big.mark = ","), style = "text-align: center;"),
+    p(paste0("SLS: ", format(sls_val, big.mark = ","), " | 20mm: ", format(mm_val, big.mark = ",")), style = "text-align: center; font-size: 0.9em;"),
+     theme = "primary"
+  )
+})
+
+output$stat_surveys <- renderUI({
+  data <- all_r()
+  if(nrow(data) == 0) return(value_box("Total Surveys", 0, theme = "secondary"))
+  
+  total <- data %>% select(wy, source, survey) %>% n_distinct()
+  # Define values locally specifically for survey counts
+  sls_val <- data %>% filter(source == "SLS") %>% select(wy, survey) %>% n_distinct()
+  mm_val  <- data %>% filter(source == "20mm") %>% select(wy, survey) %>% n_distinct()
+  
+  value_box(
+    title = div("Total Surveys", style = "text-align: center;"),
+    value = div(total, style = "text-align: center;"),
+    p(paste0("SLS: ", sls_val, " | 20mm: ", mm_val), style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
+    theme = "secondary"
+  )
+})
+
+output$stat_fish <- renderUI({
+  data <- all_r()
+  total <- sum(data$count, na.rm = TRUE)
+  # Define values locally specifically for fish counts
+  sls_val <- sum(data$count[data$source == "SLS"], na.rm = TRUE)
+  mm_val  <- sum(data$count[data$source == "20mm"], na.rm = TRUE)
+  
+  value_box(
+    title = div("Total Longfin Smelt", style = "text-align: center;"),
+    value = div(format(total, big.mark = ","), style = "text-align: center;"),
+    p(paste0("SLS: ", format(sls_val, big.mark = ","), " | 20mm: ", format(mm_val, big.mark = ",")), 
+      style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
+    theme = "info"
+  )
+})
+output$effort_table <- renderDT({
+  df <- all_r()
+  
+  if (nrow(df) == 0) {
+    return(datatable(data.frame(Status = "No Data Selected"), dom = 't', rownames = FALSE))
+  }
+
+  eff_wide <- df %>%
+    group_by(oldregionupdate, station, wy) %>%
+    summarise(Tows = n(), .groups = 'drop') %>%
+    mutate(Tows = as.character(Tows)) %>% 
+    pivot_wider(names_from = wy, values_from = Tows, values_fill = "") %>%
+    arrange(oldregionupdate, desc(station)) %>%
+    select(-oldregionupdate)
+  
+  datatable(
+    eff_wide, 
+    extensions = 'FixedColumns', # 1. Add the FixedColumns extension
+    options = list(
+      dom = 't', 
+      paging = FALSE, 
+      scrollX = TRUE,            # 2. REQUIRED for FixedColumns
+      scrollY = "490px",         # 3. REQUIRED to pin the Header
+      scrollCollapse = TRUE,
+      fixedColumns = list(leftColumns = 1), # 4. Freeze the 1st column (Station)
+      columnDefs = list(
+        list(className = 'dt-center', targets = "_all"),
+        # Set a specific width for the station column so it looks clean when frozen
+        list(width = '80px', targets = 0) 
+      )
+    ), 
+    rownames = FALSE,
+    caption = "Number of Tows per Station by Water Year "
+  )
+})
+
+output$catch_plot_faceted <- renderPlotly({
+  data <- all_r() 
+  if(nrow(data) == 0) return(NULL)
+
+  # 1. Determine if we are in "Single Year Mode" 
+  is_single_year <- length(input$years) == 1 && !("ALL" %in% input$years)
+  
+  # 2. Setup the Plot Data
+  if (is_single_year) {
+    # Define Survey Sort Orders (Using your custom order for SLS)
+    sls_levels <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
+    mm_levels <- paste("20mm", 1:10)
+    
+    plot_data <- data %>%
+      mutate(source = factor(source, levels = c("SLS", "20mm"))) %>%
+      mutate(x_axis = factor(survey_label, levels = c(sls_levels, mm_levels))) %>%
+      group_by(x_axis, source, oldregionupdate) %>% 
+      summarise(RegionalCatch = sum(count, na.rm = TRUE), .groups = "drop") %>%
+      mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
+    
+    x_label <- "Survey"
+    # FIXED: Use "free" so Y-axis and X-axis are independent for each project
+    facet_scales <- "free" 
+    
+  } else {
+    # MULTI-YEAR MODE
+    plot_data <- data %>%
+      mutate(source = factor(source, levels = c("SLS", "20mm"))) %>%
+      mutate(x_axis = factor(wy)) %>% 
+      group_by(x_axis, wy, source, oldregionupdate, yearType) %>% 
+      summarise(RegionalCatch = sum(count, na.rm = TRUE), .groups = "drop") %>%
+      mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
+    
+    x_label <- "Water Year"
+    facet_scales <- "free_y"
+    
+    # Calculate totals for labels
+    year_totals <- plot_data %>%
+      group_by(x_axis, source, yearType) %>% 
+      summarise(AnnualTotal = sum(RegionalCatch), .groups = "drop")
+  }
+
+  # 3. Define the single-row key text
+  wy_legend_text <- "<b>W:</b> Wet | <b>AN:</b> Above Normal | <b>BN:</b> Below Normal | <b>D:</b> Dry | <b>C:</b> Critical"
+
+  # 4. Create the Plot
+  p <- ggplot(plot_data, aes(x = x_axis, y = RegionalCatch)) +
+    geom_col(aes(fill = oldregionupdate), color = "black", linewidth = 0.3) +
+    
+    # Year type labels (Only added if NOT single year)
+    { if(!is_single_year) geom_text(data = year_totals, 
+                                    aes(x = x_axis, y = AnnualTotal, label = paste0(yearType, "\n")), 
+                                    vjust = 0.2, size = 3, fontface = "bold") } +
+    
+    facet_wrap(~source, ncol = 1, scales = facet_scales) +
+    
+    scale_fill_manual(values = region_colors, name = NULL) +
+    scale_y_continuous(labels = scales::label_comma(), expand = expansion(mult = c(0, 0.35))) +
+    
+    theme_minimal() +
+    labs(x = x_label, y = "Total Catch") +
+    theme(
+      strip.text = element_text(size = 12, face = "bold"),
+      panel.spacing = unit(2.5, "lines"), 
+      # FIXED: Move X-axis title lower using margin
+      axis.title.x = element_text(face = "bold", margin = margin(t = 20)), 
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid = element_blank(),
+      axis.line = element_line(color = "black")
+    )
+
+  # 5. Convert to plotly and adjust layout
+  ggplotly(p) %>% 
+    layout(
+      margin = list(t = 60, b = 130), # Increased bottom margin for label + legend
+      legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.26),
+      # Add the WY Type Key ONLY in multi-year mode
+      annotations = if(!is_single_year) {
+        list(list(
+          x = 0.5, y = -0.22, 
+          text = wy_legend_text,
+          showarrow = FALSE,
+          xref = 'paper', yref = 'paper',
+          xanchor = 'center', yanchor = 'bottom',
+          font = list(size = 11)
+        ))
+      } else { list() }
+    )
+})
+
+```
+
+
+# Longfin Catch Graphs
+
+### Catch {height=100%}
+```{r}
+plotlyOutput("catch_plot_faceted")
+```
+
+
+
+# Distribution
+WIP
+# Length Frequency
+WIP
+# Water Quality 
+WIP
