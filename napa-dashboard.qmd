@@ -117,7 +117,7 @@ uiOutput("survey_ui")
 
 
 # Effort
-## Row {height=20%}
+## Row {height=auto}
 ###  
 
 ```{r}
