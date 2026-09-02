@@ -251,6 +251,7 @@ output$stat_fish <- renderUI({
     theme = "info"
   )
 })
+
 output$effort_table <- renderDT({
   df <- all_r()
   
@@ -258,32 +259,68 @@ output$effort_table <- renderDT({
     return(datatable(data.frame(Status = "No Data Selected"), dom = 't', rownames = FALSE))
   }
 
-  eff_wide <- df %>%
-    group_by(oldregionupdate, station, wy) %>%
-    summarise(Tows = n(), .groups = 'drop') %>%
-    mutate(Tows = as.character(Tows)) %>% 
-    pivot_wider(names_from = wy, values_from = Tows, values_fill = "") %>%
-    arrange(oldregionupdate, desc(station)) %>%
-    select(-oldregionupdate)
+  # Check if we are in "Single Year Mode"
+  is_single_year <- length(input$years) == 1 && !("ALL" %in% input$years)
+
+  if (is_single_year) {
+    # 1. Define the strict biological/survey order
+    sls_levels <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
+    mm_levels  <- paste("20mm", 1:9) 
+    all_levels <- c(sls_levels, mm_levels)
+    
+    # 2. Process data
+    eff_wide <- df %>%
+      group_by(oldregionupdate, station, survey_label) %>%
+      summarise(Tows = n(), .groups = 'drop') %>%
+      mutate(Tows = as.character(Tows)) %>% 
+      # Pivot first (columns might be out of order here)
+      pivot_wider(names_from = survey_label, values_from = Tows, values_fill = "") %>%
+      # Arrange by station before we remove the region column
+      arrange(oldregionupdate, desc(station))
+    
+    # 3. FORCE COLUMN ORDER
+    # Identify which columns from our 'all_levels' actually exist in the wide data
+    present_surveys <- all_levels[all_levels %in% names(eff_wide)]
+    
+    # Select 'station' first, then the surveys in our specific order
+    eff_wide <- eff_wide %>%
+      select(station, all_of(present_surveys))
+    
+    caption_text <- paste("Number of Tows per Survey for Water Year", input$years)
+
+  } else {
+    # MULTI YEAR MODE: Show Water Years across the top
+    eff_wide <- df %>%
+      group_by(oldregionupdate, station, wy) %>%
+      summarise(Tows = n(), .groups = 'drop') %>%
+      mutate(Tows = as.character(Tows)) %>% 
+      pivot_wider(names_from = wy, values_from = Tows, values_fill = "") %>%
+      arrange(oldregionupdate, desc(station)) %>%
+      select(-oldregionupdate)
+    
+    caption_text <- "Number of Tows per Station by Water Year"
+  }
   
   datatable(
     eff_wide, 
-    extensions = 'FixedColumns', # 1. Add the FixedColumns extension
+    extensions = 'FixedColumns',
     options = list(
       dom = 't', 
       paging = FALSE, 
-      scrollX = TRUE,            # 2. REQUIRED for FixedColumns
-      scrollY = "490px",         # 3. REQUIRED to pin the Header
+      scrollX = TRUE,            
+      scrollY = "50vh", 
       scrollCollapse = TRUE,
-      fixedColumns = list(leftColumns = 1), # 4. Freeze the 1st column (Station)
+      fixedColumns = list(leftColumns = 1), 
       columnDefs = list(
         list(className = 'dt-center', targets = "_all"),
-        # Set a specific width for the station column so it looks clean when frozen
         list(width = '80px', targets = 0) 
       )
     ), 
     rownames = FALSE,
-    caption = "Number of Tows per Station by Water Year "
+    caption = htmltools::tags$caption(
+      style = 'caption-side: top; text-align: center; color: #666; font-weight: bold;',
+      caption_text
+    )
   )
 })
 
@@ -382,7 +419,9 @@ output$catch_plot_faceted <- renderPlotly({
 
 # Longfin Catch Graphs
 
-### Catch {height=100%}
+## Row {height=100%}
+
+### Catch Trends by Region {fill=false}
 ```{r}
 plotlyOutput("catch_plot_faceted")
 ```
