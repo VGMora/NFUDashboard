@@ -333,7 +333,6 @@ output$catch_plot_faceted <- renderPlotly({
   
   # 2. Setup the Plot Data
   if (is_single_year) {
-    # Define Survey Sort Orders (Using your custom order for SLS)
     sls_levels <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
     mm_levels <- paste("20mm", 1:10)
     
@@ -344,8 +343,7 @@ output$catch_plot_faceted <- renderPlotly({
       summarise(RegionalCatch = sum(count, na.rm = TRUE), .groups = "drop") %>%
       mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
     
-    x_label <- "Survey"
-    # FIXED: Use "free" so Y-axis and X-axis are independent for each project
+    x_label <- NULL # Changed from "Survey" to NULL
     facet_scales <- "free" 
     
   } else {
@@ -357,23 +355,19 @@ output$catch_plot_faceted <- renderPlotly({
       summarise(RegionalCatch = sum(count, na.rm = TRUE), .groups = "drop") %>%
       mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
     
-    x_label <- "Water Year"
+    x_label <- NULL # Changed from "Water Year" to NULL
     facet_scales <- "free_y"
     
-    # Calculate totals for labels
     year_totals <- plot_data %>%
       group_by(x_axis, source, yearType) %>% 
       summarise(AnnualTotal = sum(RegionalCatch), .groups = "drop")
   }
 
-  # 3. Define the single-row key text
   wy_legend_text <- "<b>W:</b> Wet | <b>AN:</b> Above Normal | <b>BN:</b> Below Normal | <b>D:</b> Dry | <b>C:</b> Critical"
 
-  # 4. Create the Plot
   p <- ggplot(plot_data, aes(x = x_axis, y = RegionalCatch)) +
     geom_col(aes(fill = oldregionupdate), color = "black", linewidth = 0.3) +
     
-    # Year type labels (Only added if NOT single year)
     { if(!is_single_year) geom_text(data = year_totals, 
                                     aes(x = x_axis, y = AnnualTotal, label = paste0(yearType, "\n")), 
                                     vjust = 0.2, size = 3, fontface = "bold") } +
@@ -388,19 +382,17 @@ output$catch_plot_faceted <- renderPlotly({
     theme(
       strip.text = element_text(size = 12, face = "bold"),
       panel.spacing = unit(2.5, "lines"), 
-      # FIXED: Move X-axis title lower using margin
-      axis.title.x = element_text(face = "bold", margin = margin(t = 20)), 
+      axis.title.x = element_blank(), # Explicitly remove X title space
+      axis.title.y = element_text(margin = margin(r = 10)), 
       axis.text.x = element_text(angle = 45, hjust = 1),
       panel.grid = element_blank(),
       axis.line = element_line(color = "black")
     )
 
-  # 5. Convert to plotly and adjust layout
   ggplotly(p) %>% 
     layout(
-      margin = list(t = 60, b = 130), # Increased bottom margin for label + legend
+      margin = list(t = 60, b = 130), 
       legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.26),
-      # Add the WY Type Key ONLY in multi-year mode
       annotations = if(!is_single_year) {
         list(list(
           x = 0.5, y = -0.22, 
