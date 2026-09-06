@@ -39,30 +39,33 @@ library(forcats)
 ```{r}
 #| context: setup
 # Load the  data
-SLS <- read_csv("slslfsflowmean.csv") %>% mutate(towNum = 1)
-mm20 <- read_csv("mm20lfsflowmean.csv") 
+all_data <- read_csv("Smelt_Dashboard_Data.csv") 
 
 # Combine and Clean
 month_order <- c("Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug")
-station_order <- c("340","341", "342", "343", "344", "345", "346", "347", "348", "349")
+station_order <- c("340", "342", "343", "344", "345", "346", "347", "348", "349")
 
 water_year <- data.frame(
   wy = c(1995:2026),
   yearType = c("W","W","W","W","W","AN","D","D","AN","BN","AN","W","D","C","D", "BN", "W", "BN", "D", "C", "C", "BN", "W", "BN","W", "D", "C", "C", "W", "AN", "AN", "AN")  
 )
 
-all_data <- bind_rows(SLS, mm20) %>%
+all_data <- all_data %>%
   mutate(
-    date = mdy(date),
+    date = as.Date(date),
     wy = as.integer(wy),
     month = factor(month(date, label = TRUE, abbr = TRUE), levels = month_order),
     survey_label = paste(source, survey),
     station = as.character(station),
-    count = as.integer(count),
+    count = as.integer(station_total_count),
+    cpue = station_cpue,
+    length = as.integer(length),
+    numTows = as.integer(numTows),
     survey = as.integer(survey)
   ) %>%
   mutate(survey_label = fct_reorder(survey_label, date, .fun = min)) %>%
   left_join(water_year, by = "wy")
+
 
 # 1. Define Region Order and Colors
 region_order <- c(
@@ -192,13 +195,10 @@ observeEvent(input$none_sls, { updateCheckboxGroupInput(session, "surveys_sls", 
 # --- 4. REACTIVE DATASET (Updated for Regions) ---
 all_r <- reactive({
   selected_surveys <- c(input$surveys_20mm, input$surveys_sls)
-  
   if (is.null(input$years) || is.null(input$source) || is.null(input$regions) || length(selected_surveys) == 0) {
     return(all_data[0, ])
   }
-  
   df <- all_data
-  
   if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
   if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
   
@@ -206,47 +206,65 @@ all_r <- reactive({
 })
 
 # --- 5. VALUE BOXES ---
+# --- 5. VALUE BOXES ---
+
+# Fix 1: Total Tows (Summing physical tows, ignoring length rows)
 output$stat_tows <- renderUI({
   data <- all_r()
-  total <- nrow(data)
-  sls_val <- sum(data$source == "SLS")
-  mm_val  <- sum(data$source == "20mm")
+  if(nrow(data) == 0) return(value_box("Total Tows", 0, theme = "primary"))
+  
+  # We look at unique station visits and sum the 'numTows' column (1, 2, or 3)
+  effort_summary <- data %>% 
+    distinct(source, wy, survey, station, .keep_all = TRUE)
+  
+  total <- sum(effort_summary$numTows, na.rm = TRUE)
+  sls_val <- sum(effort_summary$numTows[effort_summary$source == "SLS"], na.rm = TRUE)
+  mm_val  <- sum(effort_summary$numTows[effort_summary$source == "20mm"], na.rm = TRUE)
+  
   value_box(
     title = div("Total Tows", style = "text-align: center;"),
-     value = div(format(total, big.mark = ","), style = "text-align: center;"),
-    p(paste0("SLS: ", format(sls_val, big.mark = ","), " | 20mm: ", format(mm_val, big.mark = ",")), style = "text-align: center; font-size: 0.9em;"),
-     theme = "primary"
+    value = div(format(round(total), big.mark = ","), style = "text-align: center;"),
+    p(paste0("SLS: ", format(round(sls_val), big.mark = ","), " | 20mm: ", format(round(mm_val), big.mark = ",")), 
+      style = "text-align: center; font-size: 0.9em;"),
+    theme = "primary"
   )
 })
 
+# Fix 2: Total Surveys (Counting unique survey events)
 output$stat_surveys <- renderUI({
   data <- all_r()
   if(nrow(data) == 0) return(value_box("Total Surveys", 0, theme = "secondary"))
   
+  # A survey is a unique combination of Water Year, Project (Source), and Survey Number
   total <- data %>% select(wy, source, survey) %>% n_distinct()
-  # Define values locally specifically for survey counts
+  
   sls_val <- data %>% filter(source == "SLS") %>% select(wy, survey) %>% n_distinct()
   mm_val  <- data %>% filter(source == "20mm") %>% select(wy, survey) %>% n_distinct()
   
   value_box(
     title = div("Total Surveys", style = "text-align: center;"),
     value = div(total, style = "text-align: center;"),
-    p(paste0("SLS: ", sls_val, " | 20mm: ", mm_val), style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
+    p(paste0("SLS: ", sls_val, " | 20mm: ", mm_val), 
+      style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
     theme = "secondary"
   )
 })
 
+# Fix 3: Total Fish (Summing the length frequency column to avoid overcounting)
 output$stat_fish <- renderUI({
   data <- all_r()
-  total <- sum(data$count, na.rm = TRUE)
-  # Define values locally specifically for fish counts
-  sls_val <- sum(data$count[data$source == "SLS"], na.rm = TRUE)
-  mm_val  <- sum(data$count[data$source == "20mm"], na.rm = TRUE)
+  if(nrow(data) == 0) return(value_box("Total Longfin Smelt", 0, theme = "info"))
+  
+  # IMPORTANT: We sum 'total_len_freq' because it is NOT repeated per station.
+  # If we summed 'count', we would multiply the catch by the number of lengths.
+  total <- sum(data$total_len_freq, na.rm = TRUE)
+  sls_val <- sum(data$total_len_freq[data$source == "SLS"], na.rm = TRUE)
+  mm_val  <- sum(data$total_len_freq[data$source == "20mm"], na.rm = TRUE)
   
   value_box(
     title = div("Total Longfin Smelt", style = "text-align: center;"),
-    value = div(format(total, big.mark = ","), style = "text-align: center;"),
-    p(paste0("SLS: ", format(sls_val, big.mark = ","), " | 20mm: ", format(mm_val, big.mark = ",")), 
+    value = div(format(round(total), big.mark = ","), style = "text-align: center;"),
+    p(paste0("SLS: ", format(round(sls_val), big.mark = ","), " | 20mm: ", format(round(mm_val), big.mark = ",")), 
       style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
     theme = "info"
   )
@@ -259,6 +277,12 @@ output$effort_table <- renderDT({
     return(datatable(data.frame(Status = "No Data Selected"), dom = 't', rownames = FALSE))
   }
 
+  # --- CRUCIAL FIX ---
+  # Collapse the "Length" rows back into "Station Visit" rows immediately.
+  # This ensures we don't overcount tows because of fish lengths.
+  effort_df <- df %>%
+    distinct(oldregionupdate, station, wy, survey_label, numTows)
+
   # Check if we are in "Single Year Mode"
   is_single_year <- length(input$years) == 1 && !("ALL" %in% input$years)
 
@@ -269,20 +293,16 @@ output$effort_table <- renderDT({
     all_levels <- c(sls_levels, mm_levels)
     
     # 2. Process data
-    eff_wide <- df %>%
+    eff_wide <- effort_df %>%
       group_by(oldregionupdate, station, survey_label) %>%
-      summarise(Tows = n(), .groups = 'drop') %>%
+      # Use sum(numTows) to show 3 for 20mm and 1 for SLS
+      summarise(Tows = sum(numTows, na.rm = TRUE), .groups = 'drop') %>%
       mutate(Tows = as.character(Tows)) %>% 
-      # Pivot first (columns might be out of order here)
       pivot_wider(names_from = survey_label, values_from = Tows, values_fill = "") %>%
-      # Arrange by station before we remove the region column
       arrange(oldregionupdate, desc(station))
     
     # 3. FORCE COLUMN ORDER
-    # Identify which columns from our 'all_levels' actually exist in the wide data
     present_surveys <- all_levels[all_levels %in% names(eff_wide)]
-    
-    # Select 'station' first, then the surveys in our specific order
     eff_wide <- eff_wide %>%
       select(station, all_of(present_surveys))
     
@@ -290,15 +310,16 @@ output$effort_table <- renderDT({
 
   } else {
     # MULTI YEAR MODE: Show Water Years across the top
-    eff_wide <- df %>%
+    eff_wide <- effort_df %>%
       group_by(oldregionupdate, station, wy) %>%
-      summarise(Tows = n(), .groups = 'drop') %>%
+      # Summing numTows here shows total tows for that whole year
+      summarise(Tows = sum(numTows, na.rm = TRUE), .groups = 'drop') %>%
       mutate(Tows = as.character(Tows)) %>% 
       pivot_wider(names_from = wy, values_from = Tows, values_fill = "") %>%
       arrange(oldregionupdate, desc(station)) %>%
       select(-oldregionupdate)
     
-    caption_text <- "Number of Tows per Station by Water Year"
+    caption_text <- "Total Annual Tows per Station by Water Year"
   }
   
   datatable(
@@ -406,6 +427,10 @@ output$catch_plot_faceted <- renderPlotly({
     )
 })
 
+
+
+
+
 ```
 
 
@@ -420,9 +445,12 @@ plotlyOutput("catch_plot_faceted")
 
 
 
-# Distribution
+# Longfin Smelt Distribution
 WIP
-# Length Frequency
+
+# Longfin Smelt Length Frequency
+
 WIP
+
 # Water Quality 
 WIP
