@@ -8,11 +8,34 @@ server: shiny
 include-in-header:
   text: |
     <script>
-    $(document).on('shown.bs.tab', 'a[data-bs-toggle="tab"]', function (e) {
-      // This grabs the text and removes any whitespace
-      var tabName = $(e.target).contents().not($(e.target).children()).text().trim();
-      Shiny.setInputValue('active_tab', tabName);
-    });
+    (function() {
+      function reportActiveTab() {
+        var activeLink = document.querySelector('.navbar-nav .nav-link.active');
+        if (activeLink) {
+          var textSpan = activeLink.querySelector('.nav-link-text');
+          var tabName = (textSpan ? textSpan.textContent : activeLink.textContent)
+            .replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+          if (window.Shiny && Shiny.setInputValue) {
+            Shiny.setInputValue('active_tab', tabName);
+          }
+        }
+      }
+
+      function init() {
+        reportActiveTab();
+        var nav = document.querySelector('.navbar-nav');
+        if (nav) {
+          var observer = new MutationObserver(function() { reportActiveTab(); });
+          observer.observe(nav, { attributes: true, attributeFilter: ['class'], subtree: true });
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
     </script>
 ---
 
@@ -103,30 +126,10 @@ selectizeInput("years", "Select Water Year(s):",
                selected = 2025, multiple = TRUE, 
                options = list(plugins = list("remove_button")))
 
-# 2. Effort/Catch Filters (Hidden on Map Tab)
-conditionalPanel(
-  condition = "input.active_tab != 'Longfin Smelt Distribution'",
-  selectizeInput("regions", "Select Region(s):", 
-                 choices = c("ALL", region_order),
-                 selected = "Napa River", multiple = TRUE,
-                 options = list(plugins = list("remove_button"))),
-  hr(),
-  checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
-                     selected = c("20mm", "SLS"), inline = TRUE),
-  hr(),
-  # We still use uiOutput for surveys because they depend on the Region/Source
-  uiOutput("survey_ui")
-)
+# 2. Dynamic Container (The server will decide what goes here)
+uiOutput("dynamic_sidebar")
 
-# 3. Map Snapshot (Visible ONLY on Map Tab)
-conditionalPanel(
-  condition = "input.active_tab == 'Longfin Smelt Distribution'",
-  hr(),
-  tags$strong("Map Snapshot"),
-  uiOutput("map_controls")
-)
 ```
-
 
 # Effort
 ## Row {height=auto}
@@ -153,29 +156,27 @@ DTOutput("effort_table")
 # This ensures SLS 12/13 (December) come before SLS 1 (January)
 sls_custom_order <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
 
+
 output$dynamic_sidebar <- renderUI({
-  # Use identical() to prevent the "length zero" crash if input$active_tab is NULL
-  is_map_tab <- identical(input$active_tab, "Longfin Smelt Distribution")
+  # Safe check: %in% handles the initial NULL state perfectly
+  is_map_tab <- "Longfin Smelt Distribution" %in% input$active_tab
   
   if (is_map_tab) {
-    # CONTENT FOR MAP TAB
     tagList(
       hr(),
       tags$strong("Map Snapshot"),
       uiOutput("map_controls") 
     )
-  } else {
-    # CONTENT FOR ALL OTHER TABS
+} else {
     tagList(
       hr(),
       selectizeInput("regions", "Select Region(s):", 
                      choices = c("ALL", region_order),
-                     selected = "Napa River", multiple = TRUE),
+                     selected = "Napa River", multiple = TRUE,
+                     options = list(plugins = list("remove_button"))),
       hr(),
       checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
-                         selected = c("20mm", "SLS"), inline = TRUE),
-      hr(),
-      uiOutput("survey_ui")
+                         selected = c("20mm", "SLS"), inline = TRUE)
     )
   }
 })
@@ -183,59 +184,46 @@ output$dynamic_sidebar <- renderUI({
 # --- MAP SNAPSHOT DROPDOWN ---
 output$map_controls <- renderUI({
   req(input$years)
-  if ("ALL" %in% input$years) return(helpText("Select 1 or 2 specific years to view maps."))
+  if ("ALL" %in% input$years) return(helpText("Select specific years to view maps."))
   
-  choices <- all_data %>% 
+  mm_levels  <- paste("20mm", 1:9)
+  all_levels <- c(sls_custom_order, mm_levels)
+  
+  raw_choices <- all_data %>% 
     filter(wy %in% input$years) %>% 
-    arrange(date) %>% 
     pull(survey_label) %>% 
     unique()
+  
+  choices <- intersect(all_levels, raw_choices)
     
   selectInput("current_map_survey", "Select Survey for Map:", choices = choices)
 })
 
-# --- 3. ALL/NONE LOGIC ---
-observeEvent(input$all_20, {
-  region_data <- if("ALL" %in% input$regions) all_data else all_data %>% filter(oldregionupdate %in% input$regions)
-  choices <- region_data %>% filter(source == "20mm") %>% pull(survey_label) %>% unique() %>% sort()
-  updateCheckboxGroupInput(session, "surveys_20mm", selected = choices)
-})
-observeEvent(input$none_20, { updateCheckboxGroupInput(session, "surveys_20mm", selected = character(0)) })
-
-observeEvent(input$all_sls, {
-  region_data <- if("ALL" %in% input$regions) all_data else all_data %>% filter(oldregionupdate %in% input$regions)
-  raw_sls <- region_data %>% filter(source == "SLS") %>% pull(survey_label) %>% unique()
-  updateCheckboxGroupInput(session, "surveys_sls", selected = intersect(sls_custom_order, raw_sls))
-})
-observeEvent(input$none_sls, { updateCheckboxGroupInput(session, "surveys_sls", selected = character(0)) })
 
 # --- 4. REACTIVE DATASET (Updated for Regions) ---
 all_r <- reactive({
   req(input$years) # We always need years
   
-  df <- all_data
-  
-  # 1. Filter Years
-  if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
-  
-  # 2. Map Tab Logic: If on map tab, stop here (ignore region/survey filters)
-  if (identical(input$active_tab, "Longfin Smelt Distribution")) {
+  # IF ON THE MAP TAB: Skip the region/source/survey requirements
+  if ("Longfin Smelt Distribution" %in% input$active_tab) {
+    df <- all_data
+    if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
     return(df)
   }
   
-  # 3. Effort/Catch Tab Logic: Filter by Region and Source
+  # IF ON OTHER TABS: Require everything
   req(input$regions, input$source)
-  if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
-  df <- df %>% filter(source %in% input$source)
+  df <- all_data
   
-  # 4. Filter by Surveys (Only if they exist)
-  selected_surveys <- c(input$surveys_20mm, input$surveys_sls)
-  if (!is.null(selected_surveys) && length(selected_surveys) > 0) {
-    df <- df %>% filter(survey_label %in% selected_surveys)
-  }
+  if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
+  if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
+  
+  df <- df %>% filter(source %in% input$source)
+
   
   return(df)
 })
+
 
 # --- 5. VALUE BOXES ---
 
@@ -466,16 +454,13 @@ output$catch_plot_faceted <- renderPlotly({
 
 
 
-create_map_obj <- function(df, max_cpue, title, proj_color) {
-  leaflet() %>%
+create_map_obj <- function(df, max_cpue, title, proj_color, map_height = "40vh") {
+  leaflet(height = map_height) %>%
     addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
-    # WATER: Light blue color, lower opacity
-    addPolygons(data = WW_Delta, weight = 0.8, color = "#5dade2", 
-                fillColor = "#B3E5FC", fillOpacity = 0.5) %>%
-    # ZEROS
+    addPolygons(data = WW_Delta, weight = 0.5, color = "#5dade2", 
+                fillColor = "#D4F1F9", fillOpacity = 0.5) %>%
     addCircleMarkers(data = df %>% filter(station_total_count == 0),
-                     lng = ~X, lat = ~Y, radius = 2, color = "grey50", weight = 1, fillOpacity = 0.2) %>%
-    # CATCH
+                     lng = ~X, lat = ~Y, radius = 2, color = "grey60", weight = 1, fillOpacity = 0.2) %>%
     addCircleMarkers(data = df %>% filter(station_total_count > 0),
                      lng = ~X, lat = ~Y,
                      radius = ~sqrt(station_cpue / max_cpue) * 15 + 2,
@@ -487,33 +472,36 @@ create_map_obj <- function(df, max_cpue, title, proj_color) {
 
 # 4. SYNCED MAPS CONTAINER
 output$synced_maps_container <- renderUI({
-  # Stop if "ALL" is selected or no snapshot is picked
   req(input$current_map_survey, input$years)
-  if ("ALL" %in% input$years) return(NULL)
+  if ("ALL" %in% input$years) return(helpText("Please deselect 'ALL' to compare specific years."))
   
-  # Ensure we have numeric years
+  # Convert years to numbers safely
   years_vec <- sort(as.numeric(input$years))
-  req(length(years_vec) > 0) # Safety check
+  validate(need(length(years_vec) <= 2, "Please select 1 or 2 specific years for comparison."))
   
-  validate(need(length(years_vec) <= 2, "Please select max 2 specific years for comparison."))
-  
+  # Filter map data (Ignoring regions, using the snapshot dropdown)
   map_df <- all_data %>% 
     filter(wy %in% years_vec, survey_label == input$current_map_survey) %>% 
     distinct(wy, station, .keep_all = TRUE)
     
+  req(nrow(map_df) > 0)
+  
   max_val <- max(map_df$station_cpue, na.rm = TRUE)
   if(is.infinite(max_val) || max_val <= 0) max_val <- 1
   
-  # Map 1
+  # Height: split evenly if stacking 2 maps, otherwise use the full container
+  map_height <- if (length(years_vec) == 2) "40vh" else "85vh"
+  
+  # Build Map 1
   d1 <- map_df %>% filter(wy == years_vec[1])
-  c1 <- if(nrow(d1) > 0 && !is.na(first(d1$source)) && first(d1$source) == "SLS") "hotpink" else "#2ecc71"
-  m1 <- create_map_obj(d1, max_val, paste(years_vec[1], input$current_map_survey), c1)
+  c1 <- if(nrow(d1) > 0 && first(d1$source) == "SLS") "hotpink" else "#2ecc71"
+  m1 <- create_map_obj(d1, max_val, paste(years_vec[1], input$current_map_survey), c1, map_height)
   
   if(length(years_vec) == 2) {
-    # Map 2
+    # Build Map 2
     d2 <- map_df %>% filter(wy == years_vec[2])
-    c2 <- if(nrow(d2) > 0 && !is.na(first(d2$source)) && first(d2$source) == "SLS") "hotpink" else "#2ecc71"
-    m2 <- create_map_obj(d2, max_val, paste(years_vec[2], input$current_map_survey), c2)
+    c2 <- if(nrow(d2) > 0 && first(d2$source) == "SLS") "hotpink" else "#2ecc71"
+    m2 <- create_map_obj(d2, max_val, paste(years_vec[2], input$current_map_survey), c2, map_height)
     leafsync::sync(m1, m2, ncol = 1) 
   } else {
     m1
@@ -546,7 +534,7 @@ WIP
 ## Row {height=100%}
 ### Spatial Comparison (Synced Zoom)
 ```{r}
-tags$div(style = "height: 85vh;", uiOutput("synced_maps_container"))
+tags$div(style = "height: 85vh; overflow: hidden;", uiOutput("synced_maps_container"))
 ```
 
 
