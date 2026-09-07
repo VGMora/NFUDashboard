@@ -114,6 +114,16 @@ region_colors <- c(
   "Central & South Delta"               = "#8dd3c7"
 )
 
+# --- WATER QUALITY PARAMETER CHOICES ---
+wq_param_choices <- c(
+  "Secchi Depth (m)"          = "secchi",
+  "Surface Temperature (°C)"  = "tempSurf",
+  "Surface Salinity (ppt)"    = "salSurf",
+  "Bottom Salinity (ppt)"     = "salBot",
+  "Turbidity (FNU)"           = "fnu",
+  "Turbidity (NTU)"           = "ntu"
+)
+
 ```
 
 
@@ -158,8 +168,8 @@ sls_custom_order <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "S
 
 
 output$dynamic_sidebar <- renderUI({
-  # Safe check: %in% handles the initial NULL state perfectly
   is_map_tab <- "Longfin Smelt Distribution" %in% input$active_tab
+  is_wq_tab  <- "Water Quality" %in% input$active_tab
   
   if (is_map_tab) {
     tagList(
@@ -167,7 +177,21 @@ output$dynamic_sidebar <- renderUI({
       tags$strong("Map Snapshot"),
       uiOutput("map_controls") 
     )
-} else {
+  } else if (is_wq_tab) {
+    tagList(
+      hr(),
+      selectizeInput("regions", "Select Region(s):", 
+                     choices = c("ALL", region_order),
+                     selected = "Napa River", multiple = TRUE,
+                     options = list(plugins = list("remove_button"))),
+      hr(),
+      checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
+                         selected = c("20mm", "SLS"), inline = TRUE),
+      hr(),
+      selectInput("wq_param", "Select Water Quality Parameter:", 
+                  choices = wq_param_choices)
+    )
+  } else {
     tagList(
       hr(),
       selectizeInput("regions", "Select Region(s):", 
@@ -648,6 +672,103 @@ output$length_boxplot <- renderPlot({
     )
 })
 
+# --- WATER QUALITY DATA (deduped to one row per station visit) ---
+wq_r <- reactive({
+  df <- all_r()
+  req(df)
+  req(input$wq_param)
+  
+  # Remove fish-level duplication - keep one row per station visit
+  df <- df %>%
+    distinct(oldregionupdate, wy, survey_label, source, station, 
+             secchi, tempSurf, salSurf, salBot, fnu, ntu)
+  
+  is_all_regions <- "ALL" %in% input$regions
+  multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
+  
+  group_vars <- c("wy", "survey_label", "source")
+  if (multi_region) group_vars <- c("oldregionupdate", group_vars)
+  
+  df %>%
+    group_by(across(all_of(group_vars))) %>%
+    summarise(value = mean(.data[[input$wq_param]], na.rm = TRUE), .groups = "drop") %>%
+    mutate(value = ifelse(is.nan(value), NA, value))
+})
+
+output$water_quality_plot <- renderPlot({
+  df <- wq_r()
+  
+  if (nrow(df) == 0 || all(is.na(df$value))) {
+    return(
+      ggplot() + 
+        annotate("text", x = 0, y = 0, label = "No Data Selected", size = 6) + 
+        theme_void()
+    )
+  }
+  
+  mm_levels <- paste("20mm", 1:9)
+  all_levels <- c(sls_custom_order, mm_levels)
+  df$survey_label <- factor(as.character(df$survey_label), 
+                            levels = intersect(all_levels, unique(as.character(df$survey_label))))
+  
+  df <- df %>% mutate(wy = factor(wy))
+  
+  multi_year   <- n_distinct(df$wy) > 1
+  is_all_regions <- "ALL" %in% input$regions
+  multi_region <- !is_all_regions && "oldregionupdate" %in% names(df) && n_distinct(df$oldregionupdate) > 1
+  
+  years_present <- sort(unique(as.character(df$wy)))
+  year_text   <- paste(years_present, collapse = " vs ")
+  region_text <- if (is_all_regions) "All Regions (Combined)" else paste(unique(input$regions), collapse = " vs ")
+  param_label <- names(wq_param_choices)[wq_param_choices == input$wq_param]
+  
+  if (multi_year) {
+    year_colors <- c("#4A7FB5", "#D9822B")
+    names(year_colors) <- years_present
+    
+    p <- ggplot(df, aes(x = survey_label, y = value, group = wy, color = wy)) +
+      geom_line(linewidth = 1) +
+      geom_point(size = 3) +
+      scale_color_manual(values = year_colors) +
+      labs(color = "Water Year")
+  } else {
+    df <- df %>% mutate(source = factor(source, levels = c("SLS", "20mm")))
+    p <- ggplot(df, aes(x = survey_label, y = value, group = source, color = source)) +
+      geom_line(linewidth = 1) +
+      geom_point(size = 3) +
+      scale_color_manual(values = c("SLS" = "#EF819E", "20mm" = "#597C2B")) +
+      labs(color = "Gear Type")
+  }
+  
+  p <- p +
+    labs(
+      x = NULL,
+      y = param_label,
+      title = param_label,
+      subtitle = paste0(region_text, " | ", year_text)
+    ) +
+    theme_minimal(base_size = 18) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 5)),
+      plot.subtitle = element_text(hjust = 0.5, size = 14, margin = margin(b = 15)),
+      axis.title.y = element_text(size = 16, face = "bold", color = "black", margin = margin(r = 10)),
+      axis.text.y = element_text(size = 14, color = "black", face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12, color = "black"),
+      strip.text = element_text(size = 14, face = "bold", color = "black"),
+      panel.grid.minor = element_blank(),
+      legend.title = element_text(size = 14, face = "bold"),
+      legend.text = element_text(size = 14, face = "bold"),
+      legend.position = "top"
+    )
+  
+  if (multi_region) {
+    p <- p + facet_grid(oldregionupdate ~ ., scales = "fixed")
+  }
+  
+  p
+})
+
+
 ```
 
 
@@ -670,8 +791,12 @@ plotOutput("length_boxplot", height = "750px")
 ```
 
 # Water Quality 
-WIP
 
+## Row {height=100%}
+### Trend by Survey
+```{r}
+plotOutput("water_quality_plot", height = "650px")
+```
 
 # Longfin Smelt Distribution
 
