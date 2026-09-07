@@ -4,6 +4,10 @@ format:
   dashboard:
     orientation: rows
     theme: minty
+    nav-buttons:
+      - text: "Vanessa Mora"
+        href: "mailto:VanessaMora@Wildlife.ca.gov"
+        icon: person-circle
 server: shiny
 include-in-header:
   text: |
@@ -163,6 +167,20 @@ DTOutput("effort_table")
 
 ```{r}
 #| context: server
+
+# Show the disclaimer immediately on startup
+observe({
+  showModal(modalDialog(
+    title = "Beta Version Notice",
+    "Welcome to the NFU Summary Dashboard! Please note that this application is currently in beta mode.",
+    tags$br(), tags$br(),
+    "Features and data are preliminary/subject to change as I continue development.",
+    footer = modalButton("I Understand"),
+    size = "m",
+    easyClose = FALSE
+  ))
+})
+
 # This ensures SLS 12/13 (December) come before SLS 1 (January)
 sls_custom_order <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
 
