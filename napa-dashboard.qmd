@@ -463,7 +463,8 @@ output$catch_plot_faceted <- renderPlotly({
       axis.title.y = element_text(margin = margin(r = 15)), # Extra space for label
       axis.text.x = element_text(angle = 45, hjust = 1),
       panel.grid = element_blank(),
-      axis.line = element_line(color = "black")
+      axis.line = element_line(color = "black"),
+  panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
     )
 
   # 4. Convert to Plotly with Margin/Standoff Fixes
@@ -685,7 +686,7 @@ wq_r <- reactive({
   multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
   
   group_vars <- c("wy", "survey_label", "source")
-  if (multi_region) group_vars <- c("oldregionupdate", group_vars)
+if (!is_all_regions) group_vars <- c("oldregionupdate", group_vars)
   
   df %>%
     group_by(across(all_of(group_vars))) %>%
@@ -727,20 +728,26 @@ output$water_quality_plot <- renderPlot({
   } else {
     setNames(scales::hue_pal()(n_yrs), years_present)
   }
-    
-    p <- ggplot(df, aes(x = survey_label, y = value, group = wy, color = wy)) +
-      geom_line(linewidth = 1) +
-      geom_point(size = 3) +
-      scale_color_manual(values = year_colors) +
-      labs(color = "Water Year")
-  } else {
-    df <- df %>% mutate(source = factor(source, levels = c("SLS", "20mm")))
-    p <- ggplot(df, aes(x = survey_label, y = value, group = source, color = source)) +
-      geom_line(linewidth = 1) +
-      geom_point(size = 3) +
-      scale_color_manual(values = c("SLS" = "#EF819E", "20mm" = "#597C2B")) +
-      labs(color = "Gear Type")
-  }
+  
+  p <- ggplot(df, aes(x = survey_label, y = value, group = wy, color = wy)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    scale_color_manual(values = year_colors) +
+    labs(color = "Water Year")
+  
+} else {
+  # Single year: color by region, shape by source, all on one panel
+  df <- df %>% mutate(source = factor(source, levels = c("SLS", "20mm")))
+  
+  p <- ggplot(df, aes(x = survey_label, y = value, 
+                       group = interaction(oldregionupdate, source), 
+                       color = oldregionupdate, shape = source)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    scale_color_manual(values = region_colors) +
+    scale_shape_manual(values = c("SLS" = 16, "20mm" = 17)) +
+    labs(color = "Region", shape = "Gear Type")
+}
   
   p <- p +
     labs(
@@ -763,10 +770,10 @@ output$water_quality_plot <- renderPlot({
       legend.position = "top"
     )
   
-  if (multi_region) {
-    p <- p + facet_grid(oldregionupdate ~ ., scales = "fixed")
-  }
-  
+  if (multi_year && multi_region) {
+  p <- p + facet_grid(oldregionupdate ~ ., scales = "fixed")
+}
+
   p
 })
 
