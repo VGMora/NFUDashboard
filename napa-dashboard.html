@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>NFU Summary Dashboard</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="napa-dashboard_files/libs/clipboard/clipboard.min.js"></script>
+<script src="napa-dashboard_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="napa-dashboard_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="napa-dashboard_files/libs/quarto-html/popper.min.js"></script>
+<script src="napa-dashboard_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="napa-dashboard_files/libs/quarto-html/anchor.min.js"></script>
+<link href="napa-dashboard_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="napa-dashboard_files/libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="napa-dashboard_files/libs/quarto-html/quarto-syntax-highlighting-dark-f418161beb48e0141c760e455f12af2c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="napa-dashboard_files/libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="napa-dashboard_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="napa-dashboard_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="napa-dashboard_files/libs/bootstrap/bootstrap-c4d8ed1feef8c82ff3d7357b0853a9c0.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="napa-dashboard_files/libs/bootstrap/bootstrap-dark-c4d8ed1feef8c82ff3d7357b0853a9c0.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="light">
+<link href="napa-dashboard_files/libs/bootstrap/bootstrap-c4d8ed1feef8c82ff3d7357b0853a9c0.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="napa-dashboard_files/libs/quarto-dashboard/quarto-dashboard.js"></script>
+<script src="napa-dashboard_files/libs/quarto-dashboard/stickythead.js"></script>
+
+
+
+<script src="napa-dashboard_files/libs/quarto-dashboard/web-components.js" type="module"></script>
+<script src="napa-dashboard_files/libs/quarto-dashboard/components.js"></script>
+
+<script>
+(function() {
+  function reportActiveTab() {
+    var activeLink = document.querySelector('.navbar-nav .nav-link.active');
+    if (activeLink) {
+      var textSpan = activeLink.querySelector('.nav-link-text');
+      var tabName = (textSpan ? textSpan.textContent : activeLink.textContent)
+        .replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+      if (window.Shiny && Shiny.setInputValue) {
+        Shiny.setInputValue('active_tab', tabName);
+      }
+    }
+  }
+
+  function init() {
+    reportActiveTab();
+    var nav = document.querySelector('.navbar-nav');
+    if (nav) {
+      var observer = new MutationObserver(function() { reportActiveTab(); });
+      observer.observe(nav, { attributes: true, attributeFilter: ['class'], subtree: true });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+
+</head>
+
+<body class="quarto-dashboard dashboard-fill dashboard-sidebar fullcontent quarto-light">
+
+<header id="quarto-dashboard-header">
+<nav class="navbar navbar-expand-md slim" data-bs-theme="dark">
+  <div class="navbar-container container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashboard-collapse" aria-controls="dashboard-collapse" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>    
+
+
+    <div class="navbar-brand-container">
+
+
+      <div class="navbar-title">
+        <div class="navbar-title-text"><a href="#">NFU Summary Dashboard</a></div>
+        
+        
+      </div>
+    </div>
+<div id="dashboard-collapse" class="navbar-collapse collapse"><ul class="navbar-nav navbar-nav-scroll me-auto" role="tablist"><li class="nav-item" role="presentation"><a id="tab-effort" class="nav-link active" data-bs-toggle="tab" role="tab" data-bs-target="#effort" data-scrolling="false" href="#effort" aria-controls="effort" aria-selected="true"><span class="nav-link-text">Effort</span></a></li><li class="nav-item" role="presentation"><a id="tab-longfin-catch-graphs" class="nav-link" data-bs-toggle="tab" role="tab" data-bs-target="#longfin-catch-graphs" data-scrolling="false" href="#longfin-catch-graphs" aria-controls="longfin-catch-graphs" aria-selected="false"><span class="nav-link-text">Longfin Catch Graphs</span></a></li><li class="nav-item" role="presentation"><a id="tab-longfin-smelt-length-frequency" class="nav-link" data-bs-toggle="tab" role="tab" data-bs-target="#longfin-smelt-length-frequency" data-scrolling="false" href="#longfin-smelt-length-frequency" aria-controls="longfin-smelt-length-frequency" aria-selected="false"><span class="nav-link-text">Longfin Smelt Length Frequency</span></a></li><li class="nav-item" role="presentation"><a id="tab-water-quality" class="nav-link" data-bs-toggle="tab" role="tab" data-bs-target="#water-quality" data-scrolling="false" href="#water-quality" aria-controls="water-quality" aria-selected="false"><span class="nav-link-text">Water Quality</span></a></li><li class="nav-item" role="presentation"><a id="tab-longfin-smelt-distribution" class="nav-link" data-bs-toggle="tab" role="tab" data-bs-target="#longfin-smelt-distribution" data-scrolling="false" href="#longfin-smelt-distribution" aria-controls="longfin-smelt-distribution" aria-selected="false"><span class="nav-link-text">Longfin Smelt Distribution</span></a></li></ul></div></div>
+</nav>
+</header>
+<div class="page-layout-custom quarto-dashboard-content bslib-gap-spacing html-fill-container bslib-page-fill quarto-dashboard-pages dashboard-sidebar-container">  
+
+<div class="bslib-sidebar-layout html-fill-item html-fill-container" data-bslib-sidebar-open="desktop" data-bslib-sidebar-init="true" data-bslib-sidebar-border="false" data-bslib-sidebar-border-radius="false"><div class="main html-fill-container html-fill-item"><div class="sidebar-content html-fill-item html-fill-container">
+<div class="tab-content bslib-grid html-fill-item html-fill-container" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div id="effort" class="dashboard-page tab-pane show active html-fill-item html-fill-container" data-orientation="rows" aria-labelledby="tab-effort">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, auto) minmax(3em, 80fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
+<bslib-layout-columns class="bslib-grid grid bslib-mb-spacing html-fill-item html-fill-container" data-require-bs-caller="layout_columns()" data-require-bs-version="5">
+<div class="bslib-grid-item bslib-gap-spacing html-fill-container html-fill-item">
+<div id="stat_tows" class="shiny-html-output html-fill-item html-fill-container"></div>
+</div>
+<div class="bslib-grid-item bslib-gap-spacing html-fill-container html-fill-item">
+<div id="stat_surveys" class="shiny-html-output html-fill-item html-fill-container"></div>
+</div>
+<div class="bslib-grid-item bslib-gap-spacing html-fill-container html-fill-item">
+<div id="stat_fish" class="shiny-html-output html-fill-item html-fill-container"></div>
+</div>
+</bslib-layout-columns>
+</div>
+</div>
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
+<div class="card-body html-fill-item html-fill-container">
+<div class="cell-output-display html-fill-item html-fill-container">
+<div class="datatables html-widget html-widget-output shiny-report-size html-fill-item html-fill-container" id="effort_table" style="width:100%;height:auto;"></div>
+</div>
+</div>
+<bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
+    <template>Expand</template>
+    <span class="bslib-full-screen-enter badge rounded-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="height:1em;width:1em;" aria-hidden="true" role="img"><path d="M20 5C20 4.4 19.6 4 19 4H13C12.4 4 12 3.6 12 3C12 2.4 12.4 2 13 2H21C21.6 2 22 2.4 22 3V11C22 11.6 21.6 12 21 12C20.4 12 20 11.6 20 11V5ZM4 19C4 19.6 4.4 20 5 20H11C11.6 20 12 20.4 12 21C12 21.6 11.6 22 11 22H3C2.4 22 2 21.6 2 21V13C2 12.4 2.4 12 3 12C3.6 12 4 12.4 4 13V19Z"></path></svg>
+    </span>
+</bslib-tooltip><script data-bslib-card-init="">bslib.Card.initializeAllCards();</script></div>
+</div>
+</div>
+</div>
+</div><div id="longfin-catch-graphs" class="dashboard-page tab-pane grid-skip html-fill-item html-fill-container" data-orientation="rows" aria-labelledby="tab-longfin-catch-graphs">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 100fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
+<div class="card-body html-fill-item html-fill-container">
+<div class="cell-output-display html-fill-item html-fill-container">
+<div class="plotly html-widget html-widget-output shiny-report-size shiny-report-theme html-fill-item html-fill-container" id="catch_plot_faceted" style="width:100%;height:400px;"></div>
+</div>
+</div>
+<bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
+    <template>Expand</template>
+    <span class="bslib-full-screen-enter badge rounded-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="height:1em;width:1em;" aria-hidden="true" role="img"><path d="M20 5C20 4.4 19.6 4 19 4H13C12.4 4 12 3.6 12 3C12 2.4 12.4 2 13 2H21C21.6 2 22 2.4 22 3V11C22 11.6 21.6 12 21 12C20.4 12 20 11.6 20 11V5ZM4 19C4 19.6 4.4 20 5 20H11C11.6 20 12 20.4 12 21C12 21.6 11.6 22 11 22H3C2.4 22 2 21.6 2 21V13C2 12.4 2.4 12 3 12C3.6 12 4 12.4 4 13V19Z"></path></svg>
+    </span>
+</bslib-tooltip><script data-bslib-card-init="">bslib.Card.initializeAllCards();</script></div>
+</div>
+</div>
+</div>
+</div><div id="longfin-smelt-length-frequency" class="dashboard-page tab-pane grid-skip html-fill-item html-fill-container" data-orientation="rows" aria-labelledby="tab-longfin-smelt-length-frequency">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 100fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
+<div class="card-body html-fill-item html-fill-container">
+<div class="cell-output-display html-fill-item html-fill-container">
+<div class="shiny-plot-output html-fill-item html-fill-container" id="length_boxplot" style="width:100%;height:750px;"></div>
+</div>
+</div>
+<bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
+    <template>Expand</template>
+    <span class="bslib-full-screen-enter badge rounded-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="height:1em;width:1em;" aria-hidden="true" role="img"><path d="M20 5C20 4.4 19.6 4 19 4H13C12.4 4 12 3.6 12 3C12 2.4 12.4 2 13 2H21C21.6 2 22 2.4 22 3V11C22 11.6 21.6 12 21 12C20.4 12 20 11.6 20 11V5ZM4 19C4 19.6 4.4 20 5 20H11C11.6 20 12 20.4 12 21C12 21.6 11.6 22 11 22H3C2.4 22 2 21.6 2 21V13C2 12.4 2.4 12 3 12C3.6 12 4 12.4 4 13V19Z"></path></svg>
+    </span>
+</bslib-tooltip><script data-bslib-card-init="">bslib.Card.initializeAllCards();</script></div>
+</div>
+</div>
+</div>
+</div><div id="water-quality" class="dashboard-page tab-pane grid-skip html-fill-item html-fill-container" data-orientation="rows" aria-labelledby="tab-water-quality">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 100fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
+<div class="card-body html-fill-item html-fill-container">
+<div class="cell-output-display html-fill-item html-fill-container">
+<div class="shiny-plot-output html-fill-item html-fill-container" id="water_quality_plot" style="width:100%;height:650px;"></div>
+</div>
+</div>
+<bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
+    <template>Expand</template>
+    <span class="bslib-full-screen-enter badge rounded-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="height:1em;width:1em;" aria-hidden="true" role="img"><path d="M20 5C20 4.4 19.6 4 19 4H13C12.4 4 12 3.6 12 3C12 2.4 12.4 2 13 2H21C21.6 2 22 2.4 22 3V11C22 11.6 21.6 12 21 12C20.4 12 20 11.6 20 11V5ZM4 19C4 19.6 4.4 20 5 20H11C11.6 20 12 20.4 12 21C12 21.6 11.6 22 11 22H3C2.4 22 2 21.6 2 21V13C2 12.4 2.4 12 3 12C3.6 12 4 12.4 4 13V19Z"></path></svg>
+    </span>
+</bslib-tooltip><script data-bslib-card-init="">bslib.Card.initializeAllCards();</script></div>
+</div>
+</div>
+</div>
+</div><div id="longfin-smelt-distribution" class="dashboard-page tab-pane grid-skip html-fill-item html-fill-container" data-orientation="rows" aria-labelledby="tab-longfin-smelt-distribution">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 100fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-columns: minmax(3em, 1fr);
+grid-auto-rows: minmax(0, 1fr);">
+<div class="html-fill-item html-fill-container bslib-grid" style="display: grid; grid-template-rows: minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
+<div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
+<div class="card-body html-fill-item html-fill-container">
+<div class="cell-output-display html-fill-item html-fill-container no-overflow-x">
+<div style="height: 85vh; overflow: hidden;" class="html-fill-item html-fill-container">
+<div id="synced_maps_container" class="shiny-html-output html-fill-item html-fill-container"></div>
+</div>
+</div>
+</div>
+<bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
+    <template>Expand</template>
+    <span class="bslib-full-screen-enter badge rounded-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="height:1em;width:1em;" aria-hidden="true" role="img"><path d="M20 5C20 4.4 19.6 4 19 4H13C12.4 4 12 3.6 12 3C12 2.4 12.4 2 13 2H21C21.6 2 22 2.4 22 3V11C22 11.6 21.6 12 21 12C20.4 12 20 11.6 20 11V5ZM4 19C4 19.6 4.4 20 5 20H11C11.6 20 12 20.4 12 21C12 21.6 11.6 22 11 22H3C2.4 22 2 21.6 2 21V13C2 12.4 2.4 12 3 12C3.6 12 4 12.4 4 13V19Z"></path></svg>
+    </span>
+</bslib-tooltip><script data-bslib-card-init="">bslib.Card.initializeAllCards();</script></div>
+<div id="3ade8a4a-fb1d-4a6c-8409-ac45482d5fc9" class="hidden html-fill-item html-fill-container">
+
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></div><aside id="bslib-sidebar-1" class="sidebar html-fill-container html-fill-item"><div class="html-fill-container html-fill-item">
+<div class="cell-output-display no-overflow-x">
+<div class="form-group shiny-input-container">
+<label class="control-label" id="years-label" for="years">Select Water Year(s):</label>
+<div>
+<select class="shiny-input-select form-control" id="years" multiple="multiple"><option value="ALL">ALL</option>
+<option value="2026">2026</option>
+<option value="2025" selected="">2025</option>
+<option value="2024">2024</option>
+<option value="2023">2023</option>
+<option value="2022">2022</option>
+<option value="2021">2021</option>
+<option value="2020">2020</option>
+<option value="2019">2019</option>
+<option value="2018">2018</option>
+<option value="2017">2017</option>
+<option value="2016">2016</option>
+<option value="2015">2015</option>
+<option value="2014">2014</option>
+<option value="2013">2013</option>
+<option value="2012">2012</option>
+<option value="2011">2011</option>
+<option value="2010">2010</option>
+<option value="2009">2009</option>
+<option value="2008">2008</option>
+<option value="2007">2007</option>
+<option value="2006">2006</option>
+<option value="2005">2005</option>
+<option value="2004">2004</option>
+<option value="2003">2003</option>
+<option value="2002">2002</option>
+<option value="2001">2001</option>
+<option value="2000">2000</option>
+<option value="1999">1999</option>
+<option value="1998">1998</option>
+<option value="1997">1997</option>
+<option value="1996">1996</option>
+<option value="1995">1995</option></select>
+<script type="application/json" data-for="years">{"plugins":["remove_button","selectize-plugin-a11y"]}</script>
+</div>
+</div>
+</div>
+<div class="cell-output-display no-overflow-x">
+<div id="dynamic_sidebar" class="shiny-html-output"></div>
+</div>
+</div></aside>
+<button class="collapse-toggle" type="button" title="Toggle sidebar" aria-expanded="true" aria-controls="bslib-sidebar-1">
+    <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 16 16" class="bi bi-chevron-left collapse-icon" style="fill:currentColor;" aria-hidden="true" role="img">
+      <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"></path>
+    </svg>
+</button>
+<script data-bslib-sidebar-init="">
+bslib.Sidebar.initCollapsibleAll()
+</script>
+</div>
+<p>
+<script type="application/shiny-prerendered" data-context="server-start">
+library(shiny)
+library(bslib)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(readxl)
+library(tidyverse)
+library(patchwork) 
+library(viridis)
+library(wql)
+library(scales)
+library(DT)
+library(plotly)
+library(bsicons)
+library(forcats)
+library(sf)
+library(deltamapr)
+library(leaflet)
+library(leafsync) 
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server-start">
+# Load the  data
+all_data <- read_csv("Smelt_Dashboard_Data.csv") 
+
+# Combine and Clean
+month_order <- c("Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug")
+station_order <- c("340", "342", "343", "344", "345", "346", "347", "348", "349")
+
+water_year <- data.frame(
+  wy = c(1995:2026),
+  yearType = c("W","W","W","W","W","AN","D","D","AN","BN","AN","W","D","C","D", "BN", "W", "BN", "D", "C", "C", "BN", "W", "BN","W", "D", "C", "C", "W", "AN", "AN", "AN")  
+)
+
+all_data <- all_data %>%
+  mutate(
+    date = as.Date(date),
+    wy = as.integer(wy),
+    month = factor(month(date, label = TRUE, abbr = TRUE), levels = month_order),
+    survey_label = paste(source, survey),
+    station = as.character(station),
+    count = as.integer(station_total_count),
+    cpue = station_cpue,
+    length = as.integer(length),
+    numTows = as.integer(numTows),
+    survey = as.integer(survey)
+  ) %>%
+  mutate(survey_label = fct_reorder(survey_label, date, .fun = min)) %>%
+  left_join(water_year, by = "wy")
+
+
+# 1. Define Region Order and Colors
+region_order <- c(
+  "Central & South Delta", 
+  "Sacramento River System", 
+  "Confluence",
+  "Suisun Bay & Marsh",
+  "Napa River",
+  "San Pablo & Carquinez Strait"
+)
+
+region_colors <- c(
+  "San Pablo & Carquinez Strait"        = "#80b1d3", 
+  "Napa River"                          = "#bebada", 
+  "Suisun Bay & Marsh"                  = "#fdb462", 
+  "Confluence"                          = "#ffffb3", 
+  "Sacramento River System"             = "#fb8072", 
+  "Central & South Delta"               = "#8dd3c7"
+)
+
+# --- WATER QUALITY PARAMETER CHOICES ---
+wq_param_choices <- c(
+  "Secchi Depth (m)"          = "secchi",
+  "Surface Temperature (°C)"  = "tempSurf",
+  "Surface Salinity (ppt)"    = "salSurf",
+  "Bottom Salinity (ppt)"     = "salBot",
+  "Turbidity (FNU)"           = "fnu",
+  "Turbidity (NTU)"           = "ntu"
+)
+
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server">
+# This ensures SLS 12/13 (December) come before SLS 1 (January)
+sls_custom_order <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
+
+
+output$dynamic_sidebar <- renderUI({
+  is_map_tab <- "Longfin Smelt Distribution" %in% input$active_tab
+  is_wq_tab  <- "Water Quality" %in% input$active_tab
+  
+  if (is_map_tab) {
+    tagList(
+      hr(),
+      tags$strong("Map Snapshot"),
+      uiOutput("map_controls") 
+    )
+  } else if (is_wq_tab) {
+    tagList(
+      hr(),
+      selectizeInput("regions", "Select Region(s):", 
+                     choices = c("ALL", region_order),
+                     selected = "Napa River", multiple = TRUE,
+                     options = list(plugins = list("remove_button"))),
+      hr(),
+      checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
+                         selected = c("20mm", "SLS"), inline = TRUE),
+      hr(),
+      selectInput("wq_param", "Select Water Quality Parameter:", 
+                  choices = wq_param_choices)
+    )
+  } else {
+    tagList(
+      hr(),
+      selectizeInput("regions", "Select Region(s):", 
+                     choices = c("ALL", region_order),
+                     selected = "Napa River", multiple = TRUE,
+                     options = list(plugins = list("remove_button"))),
+      hr(),
+      checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
+                         selected = c("20mm", "SLS"), inline = TRUE)
+    )
+  }
+})
+
+# --- MAP SNAPSHOT DROPDOWN ---
+output$map_controls <- renderUI({
+  req(input$years)
+  if ("ALL" %in% input$years) return(helpText("Select specific years to view maps."))
+  
+  mm_levels  <- paste("20mm", 1:9)
+  all_levels <- c(sls_custom_order, mm_levels)
+  
+  raw_choices <- all_data %>% 
+    filter(wy %in% input$years) %>% 
+    pull(survey_label) %>% 
+    unique()
+  
+  choices <- intersect(all_levels, raw_choices)
+    
+  selectInput("current_map_survey", "Select Survey for Map:", choices = choices)
+})
+
+
+# --- 4. REACTIVE DATASET (Updated for Regions) ---
+all_r <- reactive({
+  req(input$years) # We always need years
+  
+  # IF ON THE MAP TAB: Skip the region/source/survey requirements
+  if ("Longfin Smelt Distribution" %in% input$active_tab) {
+    df <- all_data
+    if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
+    return(df)
+  }
+  
+  # IF ON OTHER TABS: Require everything
+  req(input$regions, input$source)
+  df <- all_data
+  
+  if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
+  if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
+  
+  df <- df %>% filter(source %in% input$source)
+
+  
+  return(df)
+})
+
+# --- LENGTH DATA (expanded to one row per fish, filtered to measured fish only) ---
+length_r <- reactive({
+  df <- all_r() %>% 
+    filter(!is.na(length), !is.na(total_len_freq), total_len_freq > 0) %>%
+    mutate(total_len_freq = as.integer(round(total_len_freq))) %>%
+    tidyr::uncount(total_len_freq) %>%   # one row per actual fish
+    group_by(survey_label) %>%
+    mutate(month = factor(month(min(date), label = TRUE, abbr = TRUE), levels = month_order))%>%
+    ungroup()
+  df$survey_label <- fct_drop(df$survey_label)
+  df
+})
+
+# --- 5. VALUE BOXES ---
+
+# Fix 1: Total Tows (Summing physical tows, ignoring length rows)
+output$stat_tows <- renderUI({
+  data <- all_r()
+  if(nrow(data) == 0) return(value_box("Total Tows", 0, theme = "primary"))
+  
+  # We look at unique station visits and sum the 'numTows' column (1, 2, or 3)
+  effort_summary <- data %>% 
+    distinct(source, wy, survey, station, .keep_all = TRUE)
+  
+  total <- sum(effort_summary$numTows, na.rm = TRUE)
+  sls_val <- sum(effort_summary$numTows[effort_summary$source == "SLS"], na.rm = TRUE)
+  mm_val  <- sum(effort_summary$numTows[effort_summary$source == "20mm"], na.rm = TRUE)
+  
+  value_box(
+    title = div("Total Tows", style = "text-align: center;"),
+    value = div(format(round(total), big.mark = ","), style = "text-align: center;"),
+    p(paste0("SLS: ", format(round(sls_val), big.mark = ","), " | 20mm: ", format(round(mm_val), big.mark = ",")), 
+      style = "text-align: center; font-size: 0.9em;"),
+    theme = "primary"
+  )
+})
+
+# Fix 2: Total Surveys (Counting unique survey events)
+output$stat_surveys <- renderUI({
+  data <- all_r()
+  if(nrow(data) == 0) return(value_box("Total Surveys", 0, theme = "secondary"))
+  
+  # A survey is a unique combination of Water Year, Project (Source), and Survey Number
+  total <- data %>% select(wy, source, survey) %>% n_distinct()
+  
+  sls_val <- data %>% filter(source == "SLS") %>% select(wy, survey) %>% n_distinct()
+  mm_val  <- data %>% filter(source == "20mm") %>% select(wy, survey) %>% n_distinct()
+  
+  value_box(
+    title = div("Total Surveys", style = "text-align: center;"),
+    value = div(total, style = "text-align: center;"),
+    p(paste0("SLS: ", sls_val, " | 20mm: ", mm_val), 
+      style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
+    theme = "secondary"
+  )
+})
+
+# Fix 3: Total Fish (Summing the length frequency column to avoid overcounting)
+output$stat_fish <- renderUI({
+  data <- all_r()
+  if(nrow(data) == 0) return(value_box("Total Longfin Smelt", 0, theme = "info"))
+  
+  # IMPORTANT: We sum 'total_len_freq' because it is NOT repeated per station.
+  # If we summed 'count', we would multiply the catch by the number of lengths.
+  total <- sum(data$total_len_freq, na.rm = TRUE)
+  sls_val <- sum(data$total_len_freq[data$source == "SLS"], na.rm = TRUE)
+  mm_val  <- sum(data$total_len_freq[data$source == "20mm"], na.rm = TRUE)
+  
+  value_box(
+    title = div("Total Longfin Smelt", style = "text-align: center;"),
+    value = div(format(round(total), big.mark = ","), style = "text-align: center;"),
+    p(paste0("SLS: ", format(round(sls_val), big.mark = ","), " | 20mm: ", format(round(mm_val), big.mark = ",")), 
+      style = "text-align: center; font-size: 0.9em; opacity: 0.9;"),
+    theme = "info"
+  )
+})
+
+output$effort_table <- renderDT({
+  df <- all_r()
+  
+  if (nrow(df) == 0) {
+    return(datatable(data.frame(Status = "No Data Selected"), rownames = FALSE, options = list(dom = 't')))
+  }
+
+  # This ensures we don't overcount tows because of fish lengths.
+  effort_df <- df %>%
+    distinct(oldregionupdate, station, wy, survey_label, numTows)
+
+  # Check if we are in "Single Year Mode"
+  is_single_year <- length(input$years) == 1 && !("ALL" %in% input$years)
+
+  if (is_single_year) {
+    # 1. Define the strict biological/survey order
+    sls_levels <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
+    mm_levels  <- paste("20mm", 1:9) 
+    all_levels <- c(sls_levels, mm_levels)
+    
+    # 2. Process data
+    eff_wide <- effort_df %>%
+      group_by(oldregionupdate, station, survey_label) %>%
+      # Use sum(numTows) to show 3 for 20mm and 1 for SLS
+      summarise(Tows = sum(numTows, na.rm = TRUE), .groups = 'drop') %>%
+      mutate(Tows = as.character(Tows)) %>% 
+      pivot_wider(names_from = survey_label, values_from = Tows, values_fill = "") %>%
+      arrange(oldregionupdate, desc(station))
+    
+    # 3. FORCE COLUMN ORDER
+    present_surveys <- all_levels[all_levels %in% names(eff_wide)]
+    eff_wide <- eff_wide %>%
+      select(station, all_of(present_surveys))
+    
+    caption_text <- paste("Number of Tows per Survey for Water Year", input$years)
+
+  } else {
+    # MULTI YEAR MODE: Show Water Years across the top
+    eff_wide <- effort_df %>%
+      group_by(oldregionupdate, station, wy) %>%
+      # Summing numTows here shows total tows for that whole year
+      summarise(Tows = sum(numTows, na.rm = TRUE), .groups = 'drop') %>%
+      mutate(Tows = as.character(Tows)) %>% 
+      pivot_wider(names_from = wy, values_from = Tows, values_fill = "") %>%
+      arrange(oldregionupdate, desc(station)) %>%
+      select(-oldregionupdate)
+    
+    caption_text <- "Total Annual Tows per Station by Water Year"
+  }
+  
+datatable(
+    eff_wide, 
+    extensions = 'FixedColumns',
+    rownames = FALSE, # Moved this outside of options
+    options = list(
+      dom = 't', 
+      paging = FALSE, 
+      scrollX = TRUE,            
+      scrollY = "50vh", 
+      scrollCollapse = TRUE,
+      fixedColumns = list(leftColumns = 1), 
+      columnDefs = list(
+        list(className = 'dt-center', targets = "_all"),
+        list(width = '80px', targets = 0) 
+      )
+    ),
+    caption = htmltools::tags$caption(
+      style = 'caption-side: top; text-align: center; color: #666; font-weight: bold;',
+      caption_text
+    )
+  )
+})
+
+output$catch_plot_faceted <- renderPlotly({
+  data <- all_r() 
+  if(nrow(data) == 0) return(NULL)
+
+  # 1. Determine if we are in "Single Year Mode" 
+  is_single_year <- length(input$years) == 1 && !("ALL" %in% input$years)
+  
+  # 2. Setup the Plot Data
+  if (is_single_year) {
+    sls_levels <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
+    mm_levels <- paste("20mm", 1:10)
+    
+    plot_data <- data %>%
+      mutate(source = factor(source, levels = c("SLS", "20mm"))) %>%
+      mutate(x_axis = factor(survey_label, levels = intersect(c(sls_levels, mm_levels), unique(data$survey_label)))) %>%
+      group_by(x_axis, source, oldregionupdate) %>% 
+      # CRUCIAL: Sum total_len_freq to avoid overcounting the repeated 'count' column
+      summarise(RegionalCatch = sum(total_len_freq, na.rm = TRUE), .groups = "drop") %>%
+      mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
+    
+    x_label <- NULL 
+    facet_scales <- "free" 
+    
+  } else {
+    # MULTI-YEAR MODE
+    plot_data <- data %>%
+      mutate(source = factor(source, levels = c("SLS", "20mm"))) %>%
+      mutate(x_axis = factor(wy)) %>% 
+      group_by(x_axis, wy, source, oldregionupdate, yearType) %>% 
+      # CRUCIAL: Sum total_len_freq here as well
+      summarise(RegionalCatch = sum(total_len_freq, na.rm = TRUE), .groups = "drop") %>%
+      mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
+    
+    x_label <- NULL
+    facet_scales <- "free_y"
+    
+    year_totals <- plot_data %>%
+      group_by(x_axis, source, yearType) %>% 
+      summarise(AnnualTotal = sum(RegionalCatch), .groups = "drop")
+  }
+
+  wy_legend_text <- "<b>W:<\u002fb> Wet | <b>AN:<\u002fb> Above Normal | <b>BN:<\u002fb> Below Normal | <b>D:<\u002fb> Dry | <b>C:<\u002fb> Critical"
+
+  # 3. Build the ggplot
+  p <- ggplot(plot_data, aes(x = x_axis, y = RegionalCatch)) +
+    geom_col(aes(fill = oldregionupdate), color = "black", linewidth = 0.3) +
+    
+    { if(!is_single_year) geom_text(data = year_totals, 
+                                    aes(x = x_axis, y = AnnualTotal, label = paste0(yearType, "\n")), 
+                                    vjust = 0.2, size = 3, fontface = "bold") } +
+    
+    facet_wrap(~source, ncol = 1, scales = facet_scales) +
+    
+    scale_fill_manual(values = region_colors, name = NULL) +
+    scale_y_continuous(labels = scales::label_comma(), expand = expansion(mult = c(0, 0.45))) +
+    
+    theme_minimal() +
+    labs(x = x_label, y = "Total Catch") +
+    theme(
+      strip.text = element_text(size = 12, face = "bold"),
+      panel.spacing = unit(2.5, "lines"), 
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(margin = margin(r = 15)), # Extra space for label
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid = element_blank(),
+      axis.line = element_line(color = "black"),
+  panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
+    )
+
+  # 4. Convert to Plotly with Margin/Standoff Fixes
+  ggplotly(p) %>% 
+    layout(
+      # Increase bottom margin (b) to 150 and left margin (l) to 80
+      margin = list(t = 60, b = 150, l = 80), 
+      # standoff moves the "Total Catch" label away from the numbers
+      yaxis = list(title = list(standoff = 20)),
+      yaxis2 = list(title = list(standoff = 20)),
+      legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.35),
+      annotations = if(!is_single_year) {
+        list(list(
+          x = 0.5, y = -0.28, 
+          text = wy_legend_text,
+          showarrow = FALSE,
+          xref = 'paper', yref = 'paper',
+          xanchor = 'center', yanchor = 'bottom',
+          font = list(size = 11)
+        ))
+      } else { list() }
+    )
+})
+
+
+
+create_map_obj <- function(df, max_cpue, title, proj_color, map_height = "40vh") {
+  leaflet(height = map_height) %>%
+    addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
+    addPolygons(data = WW_Delta, weight = 0.5, color = "#5dade2", 
+                fillColor = "#D4F1F9", fillOpacity = 0.5) %>%
+    addCircleMarkers(data = df %>% filter(station_total_count == 0),
+                     lng = ~X, lat = ~Y, radius = 2, color = "grey60", weight = 1, fillOpacity = 0.2) %>%
+    addCircleMarkers(data = df %>% filter(station_total_count > 0),
+                     lng = ~X, lat = ~Y,
+                     radius = ~sqrt(station_cpue / max_cpue) * 15 + 2,
+                     color = proj_color, fillColor = proj_color, fillOpacity = 0.7, weight = 1,
+                     label = ~paste0("Station: ", station, " | CPUE: ", round(station_cpue, 1))) %>%
+    addControl(html = paste0("<div style='background:white;padding:3px;border:1px solid grey;'><b>", title, "<\u002fb><\u002fdiv>"), 
+               position = "topright")
+}
+
+# 4. SYNCED MAPS CONTAINER
+output$synced_maps_container <- renderUI({
+  req(input$current_map_survey, input$years)
+  if ("ALL" %in% input$years) return(helpText("Please deselect 'ALL' to compare specific years."))
+  
+  # Convert years to numbers safely
+  years_vec <- sort(as.numeric(input$years))
+  validate(need(length(years_vec) <= 2, "Please select 1 or 2 specific years for comparison."))
+  
+  # Filter map data (Ignoring regions, using the snapshot dropdown)
+  map_df <- all_data %>% 
+    filter(wy %in% years_vec, survey_label == input$current_map_survey) %>% 
+    distinct(wy, station, .keep_all = TRUE)
+    
+  req(nrow(map_df) > 0)
+  
+  max_val <- max(map_df$station_cpue, na.rm = TRUE)
+  if(is.infinite(max_val) || max_val <= 0) max_val <- 1
+  
+  # Height: split evenly if stacking 2 maps, otherwise use the full container
+  map_height <- if (length(years_vec) == 2) "40vh" else "85vh"
+  
+  # Build Map 1
+  d1 <- map_df %>% filter(wy == years_vec[1])
+  c1 <- if(nrow(d1) > 0 && first(d1$source) == "SLS") "#EF819E" else "#597C2B"
+  m1 <- create_map_obj(d1, max_val, paste(years_vec[1], input$current_map_survey), c1, map_height)
+  
+  if(length(years_vec) == 2) {
+    # Build Map 2
+    d2 <- map_df %>% filter(wy == years_vec[2])
+    c2 <- if(nrow(d2) > 0 && first(d2$source) == "SLS") "#EF819E" else "#597C2B"
+    m2 <- create_map_obj(d2, max_val, paste(years_vec[2], input$current_map_survey), c2, map_height)
+    leafsync::sync(m1, m2, ncol = 1) 
+  } else {
+    m1
+  }
+})
+
+
+# ---  ---
+observeEvent(input$years, {
+  yrs <- input$years
+  is_length_tab <- "Longfin Smelt Length Frequency" %in% input$active_tab
+  
+  if (is_length_tab) {
+    # Length Frequency page only: no ALL, max 2 specific years
+    yrs <- yrs[yrs != "ALL"]
+    if (length(yrs) > 2) yrs <- tail(yrs, 2)
+    if (!identical(yrs, input$years)) {
+      updateSelectizeInput(session, "years", selected = yrs)
+    }
+  } else {
+    # Every other page: unlimited years, but ALL still collapses other picks into itself
+    if (length(yrs) > 1 && "ALL" %in% yrs) {
+      updateSelectizeInput(session, "years", selected = "ALL")
+    }
+  }
+}, ignoreNULL = FALSE)
+
+
+
+output$length_boxplot <- renderPlot({
+  df <- length_r()
+  
+  if (nrow(df) == 0) {
+    return(
+      ggplot() + 
+        annotate("text", x = 0, y = 0, label = "No Data Selected", size = 6) + 
+        theme_void()
+    )
+  }
+  
+  # Force correct biological/seasonal order
+  mm_levels <- paste("20mm", 1:9)
+  all_levels <- c(sls_custom_order, mm_levels)
+  df$survey_label <- factor(as.character(df$survey_label), 
+                            levels = intersect(all_levels, unique(as.character(df$survey_label))))
+  
+  df <- df %>%
+    mutate(
+      source = factor(source, levels = c("SLS", "20mm")),
+      wy = factor(wy)
+    )
+  
+  is_all_regions <- "ALL" %in% input$regions
+  
+  # If ALL regions selected, pool them (no facet row for region)
+  multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
+  multi_year   <- n_distinct(df$wy) > 1
+  
+  row_vars <- if (multi_region) "oldregionupdate" else "."
+  facet_formula <- as.formula(paste(row_vars, "~ month"))
+  
+  years_present <- sort(unique(as.character(df$wy)))
+  year_text   <- paste(years_present, collapse = " vs ")
+  region_text <- if (is_all_regions) "All Regions (Combined)" else paste(unique(df$oldregionupdate), collapse = " vs ")
+  
+  # Use a high percentile instead of the true max, so a few extreme outliers
+  # don't stretch the axis - but the data itself is untouched.
+  y_upper <- 50
+  
+  # --- Conditional color scheme ---
+  if (multi_year) {
+    fill_var <- "wy"
+    fill_colors <- c("#4A7FB5", "#D9822B")
+    names(fill_colors) <- years_present
+    legend_title <- "Water Year"
+  } else {
+    fill_var <- "source"
+    fill_colors <- c("SLS" = "#EF819E", "20mm" = "#597C2B")
+    legend_title <- "Gear Type"
+  }
+  
+  p <- ggplot(df, aes(x = survey_label, y = length, fill = .data[[fill_var]]))
+  
+  if (multi_year) {
+    p <- p +
+      geom_jitter(aes(color = .data[[fill_var]]), 
+                  position = position_jitterdodge(jitter.width = 0.5, jitter.height = 0.6, dodge.width = 0.7),
+                  alpha = 0.2, show.legend = FALSE) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.7, 
+                   position = position_dodge(width = 0.7), width = 0.6)
+  } else {
+    p <- p +
+      geom_jitter(aes(color = .data[[fill_var]]), width = 0.2, alpha = 0.2, show.legend = FALSE) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.6)
+  }
+  
+  p +
+    scale_y_continuous(
+        breaks = seq(0, y_upper, by = 5),
+        expand = c(0, 0)
+    ) +
+    coord_cartesian(ylim = c(0, y_upper)) +
+    facet_grid(facet_formula, scales = "free_x", space = "free_x", switch = "x") +
+    scale_fill_manual(values = fill_colors) +
+    scale_color_manual(values = fill_colors) +
+    labs(
+      x = NULL,
+      y = "Fork Length (mm)",
+      title = "Longfin Smelt Growth by Gear Type",
+      subtitle = paste0(region_text, " | ", year_text),
+      fill = legend_title
+    ) +
+    theme_minimal(base_size = 18) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 5)),
+      plot.subtitle = element_text(hjust = 0.5, size = 14, margin = margin(b = 15)),
+      axis.title.y = element_text(size = 16, face = "bold", color = "black", margin = margin(r = 10)),
+      axis.text.y = element_text(size = 14, color = "black", face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12, color = "black"),
+      strip.text = element_text(size = 14, face = "bold", color = "black"),
+      strip.placement = "outside",
+      strip.background = element_rect(fill = "grey95", color = "grey80"),
+      panel.grid = element_blank(),
+      axis.line = element_line(color = "black", linewidth = 0.8),
+      panel.spacing = unit(0.1, "lines"),
+      legend.title = element_text(size = 14, face = "bold"),
+      legend.text = element_text(size = 14, face = "bold"),
+      legend.key.size = unit(1.5, "lines"),
+      legend.position = "top"
+    )
+})
+
+# --- WATER QUALITY DATA (deduped to one row per station visit) ---
+wq_r <- reactive({
+  df <- all_r()
+  req(df)
+  req(input$wq_param)
+  
+  # Remove fish-level duplication - keep one row per station visit
+  df <- df %>%
+    distinct(oldregionupdate, wy, survey_label, source, station, 
+             secchi, tempSurf, salSurf, salBot, fnu, ntu)
+  
+  is_all_regions <- "ALL" %in% input$regions
+  multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
+  
+  group_vars <- c("wy", "survey_label", "source")
+if (!is_all_regions) group_vars <- c("oldregionupdate", group_vars)
+  
+  df %>%
+    group_by(across(all_of(group_vars))) %>%
+    summarise(value = mean(.data[[input$wq_param]], na.rm = TRUE), .groups = "drop") %>%
+    mutate(value = ifelse(is.nan(value), NA, value))
+})
+
+output$water_quality_plot <- renderPlot({
+  df <- wq_r()
+  
+  if (nrow(df) == 0 || all(is.na(df$value))) {
+    return(
+      ggplot() + 
+        annotate("text", x = 0, y = 0, label = "No Data Selected", size = 6) + 
+        theme_void()
+    )
+  }
+  
+  mm_levels <- paste("20mm", 1:9)
+  all_levels <- c(sls_custom_order, mm_levels)
+  df$survey_label <- factor(as.character(df$survey_label), 
+                            levels = intersect(all_levels, unique(as.character(df$survey_label))))
+  
+  df <- df %>% mutate(wy = factor(wy))
+  
+  multi_year   <- n_distinct(df$wy) > 1
+  is_all_regions <- "ALL" %in% input$regions
+  multi_region <- !is_all_regions && "oldregionupdate" %in% names(df) && n_distinct(df$oldregionupdate) > 1
+  
+  years_present <- sort(unique(as.character(df$wy)))
+  year_text   <- paste(years_present, collapse = " vs ")
+  region_text <- if (is_all_regions) "All Regions (Combined)" else paste(unique(input$regions), collapse = " vs ")
+  param_label <- names(wq_param_choices)[wq_param_choices == input$wq_param]
+  
+  if (multi_year) {
+  n_yrs <- length(years_present)
+  year_colors <- if (n_yrs <= 2) {
+    setNames(c("#4A7FB5", "#D9822B")[1:n_yrs], years_present)
+  } else {
+    setNames(scales::hue_pal()(n_yrs), years_present)
+  }
+  
+  p <- ggplot(df, aes(x = survey_label, y = value, group = wy, color = wy)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    scale_color_manual(values = year_colors) +
+    labs(color = "Water Year")
+  
+} else {
+  # Single year: color by region, shape by source, all on one panel
+  df <- df %>% mutate(source = factor(source, levels = c("SLS", "20mm")))
+  
+  p <- ggplot(df, aes(x = survey_label, y = value, 
+                       group = interaction(oldregionupdate, source), 
+                       color = oldregionupdate, shape = source)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    scale_color_manual(values = region_colors) +
+    scale_shape_manual(values = c("SLS" = 16, "20mm" = 17)) +
+    labs(color = "Region", shape = "Gear Type")
+}
+  
+  p <- p +
+    labs(
+      x = NULL,
+      y = param_label,
+      title = param_label,
+      subtitle = paste0(region_text, " | ", year_text)
+    ) +
+    theme_minimal(base_size = 18) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 5)),
+      plot.subtitle = element_text(hjust = 0.5, size = 14, margin = margin(b = 15)),
+      axis.title.y = element_text(size = 16, face = "bold", color = "black", margin = margin(r = 10)),
+      axis.text.y = element_text(size = 14, color = "black", face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12, color = "black"),
+      strip.text = element_text(size = 14, face = "bold", color = "black"),
+      panel.grid.minor = element_blank(),
+      legend.title = element_text(size = 14, face = "bold"),
+      legend.text = element_text(size = 14, face = "bold"),
+      legend.position = "top"
+    )
+  
+  if (multi_year && multi_region) {
+  p <- p + facet_grid(oldregionupdate ~ ., scales = "fixed")
+}
+
+  p
+})
+
+
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server-extras">
+ojs_define <- function(..., .session = shiny::getDefaultReactiveDomain()) {
+  quos <- rlang::enquos(...)
+  vars <- rlang::list2(...)
+  nm <- names(vars)
+  if (is.null(nm)) {
+    nm <- rep_len("", length(vars))
+  }
+  mapply(
+    function(q, nm, val) {
+      # Infer name, if possible
+      if (nm == "") {
+        tryCatch(
+          {
+            nm <- rlang::as_name(q)
+          },
+          error = function(e) {
+            code <- paste(collapse = "\n", deparse(rlang::f_rhs(q)))
+            stop(
+              "ojs_define() could not create a name for the argument: ",
+              code
+            )
+          }
+        )
+      }
+      .session$output[[nm]] <- val
+      outputOptions(.session$output, nm, suspendWhenHidden = FALSE)
+      .session$sendCustomMessage("ojs-export", list(name = nm))
+      NULL
+    },
+    quos,
+    nm,
+    vars,
+    SIMPLIFY = FALSE,
+    USE.NAMES = FALSE
+  )
+  invisible()
+}
+</script>
+</p>
+<!--html_preserve-->
+<script type="application/shiny-prerendered" data-context="dependencies">
+{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["selectize"]},{"type":"character","attributes":{},"value":["0.15.2"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["www/shared/selectize"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["js/selectize.min.js","accessibility/js/selectize-plugin-a11y.min.js"]},{"type":"character","attributes":{},"value":["css/selectize.bootstrap3.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["shiny"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["1.13.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["bslib-component-js"]},{"type":"character","attributes":{},"value":["0.10.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["components/dist"]}]},{"type":"NULL"},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["src"]}},"value":[{"type":"character","attributes":{},"value":["components.min.js"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["src","type"]}},"value":[{"type":"character","attributes":{},"value":["web-components.min.js"]},{"type":"character","attributes":{},"value":["module"]}]}]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["bslib"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.10.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["bslib-component-css"]},{"type":"character","attributes":{},"value":["0.10.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["components/dist"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["components.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["bslib"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.10.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmltools-fill"]},{"type":"character","attributes":{},"value":["0.5.9"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["fill"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["fill.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmltools"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.5.9"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["bslib-tag-require"]},{"type":"character","attributes":{},"value":["0.10.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["components"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tag-require.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["bslib"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.10.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmltools-fill"]},{"type":"character","attributes":{},"value":["0.5.9"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["fill"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["fill.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmltools"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.5.9"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmlwidgets"]},{"type":"character","attributes":{},"value":["1.6.4"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["www"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmlwidgets.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmlwidgets"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["1.6.4"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["datatables-css"]},{"type":"character","attributes":{},"value":["0.0.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["htmlwidgets/css"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["datatables-crosstalk.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["DT"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.34.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["datatables-binding"]},{"type":"character","attributes":{},"value":["0.34.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["htmlwidgets"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["datatables.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["DT"]},{"type":"logical","attributes":{},"value":[false]},{"type":"character","attributes":{},"value":["0.34.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["jquery"]},{"type":"character","attributes":{},"value":["3.5.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/jquery"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["jquery.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["crosstalk"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["1.2.2"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["crosstalk"]},{"type":"character","attributes":{},"value":["1.2.2"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["www"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["js/crosstalk.min.js"]},{"type":"character","attributes":{},"value":["css/crosstalk.min.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["crosstalk"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["1.2.2"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmltools-fill"]},{"type":"character","attributes":{},"value":["0.5.9"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["fill"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["fill.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmltools"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.5.9"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmlwidgets"]},{"type":"character","attributes":{},"value":["1.6.4"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["www"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmlwidgets.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmlwidgets"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["1.6.4"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["plotly-binding"]},{"type":"character","attributes":{},"value":["4.12.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["htmlwidgets"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["plotly.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["plotly"]},{"type":"logical","attributes":{},"value":[false]},{"type":"character","attributes":{},"value":["4.12.0"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmltools-fill"]},{"type":"character","attributes":{},"value":["0.5.9"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["fill"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["fill.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmltools"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.5.9"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files","pkgVersion"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["htmltools-fill"]},{"type":"character","attributes":{},"value":["0.5.9"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["fill"]}]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["fill.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["htmltools"]},{"type":"logical","attributes":{},"value":[true]},{"type":"character","attributes":{},"value":["0.5.9"]}]}]}
+</script>
+<!--/html_preserve-->
+<!--html_preserve-->
+<script type="application/shiny-prerendered" data-context="execution_dependencies">
+{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["packages"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["packages","version"]},"class":{"type":"character","attributes":{},"value":["data.frame"]},"row.names":{"type":"integer","attributes":{},"value":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98]}},"value":[{"type":"character","attributes":{},"value":["base","bit","bit64","bsicons","bslib","cachem","cellranger","class","classInt","cli","compiler","crayon","crosstalk","data.table","datasets","DBI","deltamapr","digest","dplyr","DT","e1071","evaluate","farver","fastmap","forcats","generics","ggplot2","glue","graphics","grDevices","grid","gridExtra","gtable","hms","htmltools","htmlwidgets","httpuv","httr","jquerylib","jsonlite","KernSmooth","knitr","later","lattice","lazyeval","leaflet","leafsync","lifecycle","lubridate","magrittr","memoise","methods","mime","otel","parallel","patchwork","pillar","pkgconfig","plotly","plyr","promises","proxy","purrr","R6","RColorBrewer","Rcpp","readr","readxl","reshape2","rlang","rmarkdown","S7","sass","scales","sf","shiny","stats","stringi","stringr","tibble","tidyr","tidyselect","tidyverse","timechange","tools","tzdb","units","utils","vctrs","viridis","viridisLite","vroom","withr","wql","xfun","xtable","yaml","zoo"]},{"type":"character","attributes":{},"value":["4.5.3","4.6.0","4.8.0","0.1.2","0.10.0","1.1.0","1.1.0","7.3-23","0.4-11","3.6.5","4.5.3","1.5.3","1.2.2","1.18.2.1","4.5.3","1.3.0","1.0.1","0.6.39","1.2.1","0.34.0","1.7-17","1.0.5","2.1.2","1.2.0","1.0.1","0.1.4","4.0.3","1.8.0","4.5.3","4.5.3","4.5.3","2.3","0.3.6","1.1.4","0.5.9","1.6.4","1.6.17","1.4.8","0.1.4","2.0.0","2.23-26","1.51","1.4.8","0.22-9","0.2.3","2.2.3","0.1.0","1.0.5","1.9.5","2.0.4","2.0.1","4.5.3","0.13","0.2.0","4.5.3","1.3.2","1.11.1","2.0.3","4.12.0","1.8.9","1.5.0","0.4-29","1.2.1","2.6.1","1.1-3","1.1.1-1.1","2.2.0","1.4.5","1.4.5","1.2.0","2.31","0.2.2","0.4.10","1.4.0","1.1-0","1.13.0","4.5.3","1.8.7","1.6.0","3.3.1","1.3.2","1.2.1","2.0.0","0.4.0","4.5.3","0.5.0","1.0-1","4.5.3","0.7.2","0.6.5","0.4.3","1.7.1","3.0.3","1.0.3","0.57","1.8-8","2.3.12","1.8-15"]}]}]}
+</script>
+<!--/html_preserve-->
+
+
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /container fluid -->
+
+<script type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (_event) {
+  if (window.bslib.Card) {
+    window.bslib.Card.initializeAllCards();
+  }
+}); 
+</script>
+  
+
+
+
+</body></html>
