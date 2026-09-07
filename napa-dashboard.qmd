@@ -229,7 +229,10 @@ length_r <- reactive({
   df <- all_r() %>% 
     filter(!is.na(length), !is.na(total_len_freq), total_len_freq > 0) %>%
     mutate(total_len_freq = as.integer(round(total_len_freq))) %>%
-    tidyr::uncount(total_len_freq)   # one row per actual fish
+    tidyr::uncount(total_len_freq) %>%   # one row per actual fish
+    group_by(survey_label) %>%
+    mutate(month = factor(month(min(date), label = TRUE, abbr = TRUE), levels = month_order))%>%
+    ungroup()
   df$survey_label <- fct_drop(df$survey_label)
   df
 })
@@ -560,43 +563,70 @@ output$length_boxplot <- renderPlot({
                             levels = intersect(all_levels, unique(as.character(df$survey_label))))
   
   df <- df %>%
-    mutate(source = factor(source, levels = c("SLS", "20mm")))
+    mutate(
+      source = factor(source, levels = c("SLS", "20mm")),
+      wy = factor(wy)
+    )
   
-  multi_region <- n_distinct(df$oldregionupdate) > 1
+  is_all_regions <- "ALL" %in% input$regions
+  
+  # If ALL regions selected, pool them (no facet row for region)
+  multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
   multi_year   <- n_distinct(df$wy) > 1
   
-  row_vars <- c()
-  if (multi_region) row_vars <- c(row_vars, "oldregionupdate")
-  if (multi_year)   row_vars <- c(row_vars, "wy")
+  row_vars <- if (multi_region) "oldregionupdate" else "."
+  facet_formula <- as.formula(paste(row_vars, "~ month"))
   
-  facet_formula <- if (length(row_vars) > 0) {
-    as.formula(paste(paste(row_vars, collapse = " + "), "~ month"))
+  years_present <- sort(unique(as.character(df$wy)))
+  year_text   <- paste(years_present, collapse = " vs ")
+  region_text <- if (is_all_regions) "All Regions (Combined)" else paste(unique(df$oldregionupdate), collapse = " vs ")
+  
+  # Use a high percentile instead of the true max, so a few extreme outliers
+  # don't stretch the axis - but the data itself is untouched.
+  y_upper <- 50
+  
+  # --- Conditional color scheme ---
+  if (multi_year) {
+    fill_var <- "wy"
+    fill_colors <- c("#4A7FB5", "#D9822B")
+    names(fill_colors) <- years_present
+    legend_title <- "Water Year"
   } else {
-    as.formula(". ~ month")
+    fill_var <- "source"
+    fill_colors <- c("SLS" = "#EF819E", "20mm" = "#597C2B")
+    legend_title <- "Gear Type"
   }
   
-  max_len <- max(df$length, na.rm = TRUE)
+  p <- ggplot(df, aes(x = survey_label, y = length, fill = .data[[fill_var]]))
   
-  year_text   <- paste(sort(unique(df$wy)), collapse = " vs ")
-  region_text <- paste(unique(df$oldregionupdate), collapse = " vs ")
+  if (multi_year) {
+    p <- p +
+      geom_jitter(aes(color = .data[[fill_var]]), 
+                  position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.7),
+                  alpha = 0.2, show.legend = FALSE) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.7, 
+                   position = position_dodge(width = 0.7), width = 0.6)
+  } else {
+    p <- p +
+      geom_jitter(aes(color = .data[[fill_var]]), width = 0.2, alpha = 0.2, show.legend = FALSE) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.6)
+  }
   
-  ggplot(df, aes(x = survey_label, y = length, fill = source)) +
-    geom_jitter(aes(color = source), width = 0.2, alpha = 0.2, show.legend = FALSE) +
-    geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  p +
     scale_y_continuous(
-      limits = c(0, max_len + 5),
-      breaks = seq(0, ceiling(max_len / 5) * 5, by = 5),
-      expand = c(0, 0)
+        breaks = seq(0, y_upper, by = 5),
+        expand = c(0, 0)
     ) +
+    coord_cartesian(ylim = c(0, y_upper)) +
     facet_grid(facet_formula, scales = "free_x", space = "free_x", switch = "x") +
-    scale_fill_manual(values = c("SLS" = "#EF819E", "20mm" = "#597C2B")) +
-    scale_color_manual(values = c("SLS" = "#EF819E", "20mm" = "#597C2B")) +
+    scale_fill_manual(values = fill_colors) +
+    scale_color_manual(values = fill_colors) +
     labs(
       x = NULL,
       y = "Fork Length (mm)",
       title = "Longfin Smelt Growth by Gear Type",
       subtitle = paste0(region_text, " | ", year_text),
-      fill = "Gear Type"
+      fill = legend_title
     ) +
     theme_minimal(base_size = 18) +
     theme(
