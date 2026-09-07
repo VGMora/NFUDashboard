@@ -9,7 +9,8 @@ include-in-header:
   text: |
     <script>
     $(document).on('shown.bs.tab', 'a[data-bs-toggle="tab"]', function (e) {
-      var tabName = $(e.target).text().trim();
+      // This grabs the text and removes any whitespace
+      var tabName = $(e.target).contents().not($(e.target).children()).text().trim();
       Shiny.setInputValue('active_tab', tabName);
     });
     </script>
@@ -33,6 +34,10 @@ library(DT)
 library(plotly)
 library(bsicons)
 library(forcats)
+library(sf)
+library(deltamapr)
+library(leaflet)
+library(leafsync) 
 ```
 
 
@@ -92,30 +97,34 @@ region_colors <- c(
 ##  {.sidebar}
 
 ```{r}
-selectizeInput(
-  "years", "Select Water Year(s):", 
-  choices = c("ALL", sort(unique(all_data$wy), decreasing = TRUE)),
-  selected = "ALL",
-  multiple = TRUE,
-  options = list(plugins = list("remove_button"))
+# 1. Years (Always visible)
+selectizeInput("years", "Select Water Year(s):", 
+               choices = c("ALL", sort(unique(all_data$wy), decreasing = TRUE)),
+               selected = 2025, multiple = TRUE, 
+               options = list(plugins = list("remove_button")))
+
+# 2. Effort/Catch Filters (Hidden on Map Tab)
+conditionalPanel(
+  condition = "input.active_tab != 'Longfin Smelt Distribution'",
+  selectizeInput("regions", "Select Region(s):", 
+                 choices = c("ALL", region_order),
+                 selected = "Napa River", multiple = TRUE,
+                 options = list(plugins = list("remove_button"))),
+  hr(),
+  checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
+                     selected = c("20mm", "SLS"), inline = TRUE),
+  hr(),
+  # We still use uiOutput for surveys because they depend on the Region/Source
+  uiOutput("survey_ui")
 )
-hr()
-selectizeInput(
-  "regions", "Select Region(s):", 
-  choices = c("ALL", sort(unique(all_data$oldregionupdate))),
-  selected = "Napa River",
-  multiple = TRUE,
-  options = list(plugins = list("remove_button"))
+
+# 3. Map Snapshot (Visible ONLY on Map Tab)
+conditionalPanel(
+  condition = "input.active_tab == 'Longfin Smelt Distribution'",
+  hr(),
+  tags$strong("Map Snapshot"),
+  uiOutput("map_controls")
 )
-hr()
-checkboxGroupInput(
-  "source", "Project:",
-  choices = c("20mm", "SLS"),
-  selected = c("20mm", "SLS"),
-  inline = TRUE
-)
-hr()
-uiOutput("survey_ui")
 ```
 
 
@@ -144,37 +153,45 @@ DTOutput("effort_table")
 # This ensures SLS 12/13 (December) come before SLS 1 (January)
 sls_custom_order <- c("SLS 12", "SLS 13", "SLS 1", "SLS 2", "SLS 3", "SLS 4", "SLS 5", "SLS 6")
 
-# --- 2. DYNAMIC TWO-COLUMN SURVEY UI ---
-output$survey_ui <- renderUI({
-  # Filter data based on selected Regions to get relevant survey choices
-  region_data <- if("ALL" %in% input$regions) all_data else all_data %>% filter(oldregionupdate %in% input$regions)
+output$dynamic_sidebar <- renderUI({
+  # Use identical() to prevent the "length zero" crash if input$active_tab is NULL
+  is_map_tab <- identical(input$active_tab, "Longfin Smelt Distribution")
   
-  choices_20mm <- region_data %>% filter(source == "20mm") %>% pull(survey_label) %>% unique() %>% sort()
-  raw_sls <- region_data %>% filter(source == "SLS") %>% pull(survey_label) %>% unique()
-  choices_sls <- intersect(sls_custom_order, raw_sls)
-  choices_sls <- c(choices_sls, setdiff(raw_sls, sls_custom_order))
-  
-  tagList(
-    tags$label(tags$strong("Select Surveys:")),
-    fluidRow(
-      column(6, 
-        if ("20mm" %in% input$source) {
-          tagList(
-            tags$small(actionLink("all_20", "All"), " | ", actionLink("none_20", "None")),
-            checkboxGroupInput("surveys_20mm", "20mm", choices = choices_20mm, selected = choices_20mm)
-          )
-        }
-      ),
-      column(6, 
-        if ("SLS" %in% input$source) {
-          tagList(
-            tags$small(actionLink("all_sls", "All"), " | ", actionLink("none_sls", "None")),
-            checkboxGroupInput("surveys_sls", "SLS", choices = choices_sls, selected = choices_sls)
-          )
-        }
-      )
+  if (is_map_tab) {
+    # CONTENT FOR MAP TAB
+    tagList(
+      hr(),
+      tags$strong("Map Snapshot"),
+      uiOutput("map_controls") 
     )
-  )
+  } else {
+    # CONTENT FOR ALL OTHER TABS
+    tagList(
+      hr(),
+      selectizeInput("regions", "Select Region(s):", 
+                     choices = c("ALL", region_order),
+                     selected = "Napa River", multiple = TRUE),
+      hr(),
+      checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
+                         selected = c("20mm", "SLS"), inline = TRUE),
+      hr(),
+      uiOutput("survey_ui")
+    )
+  }
+})
+
+# --- MAP SNAPSHOT DROPDOWN ---
+output$map_controls <- renderUI({
+  req(input$years)
+  if ("ALL" %in% input$years) return(helpText("Select 1 or 2 specific years to view maps."))
+  
+  choices <- all_data %>% 
+    filter(wy %in% input$years) %>% 
+    arrange(date) %>% 
+    pull(survey_label) %>% 
+    unique()
+    
+  selectInput("current_map_survey", "Select Survey for Map:", choices = choices)
 })
 
 # --- 3. ALL/NONE LOGIC ---
@@ -194,18 +211,32 @@ observeEvent(input$none_sls, { updateCheckboxGroupInput(session, "surveys_sls", 
 
 # --- 4. REACTIVE DATASET (Updated for Regions) ---
 all_r <- reactive({
-  selected_surveys <- c(input$surveys_20mm, input$surveys_sls)
-  if (is.null(input$years) || is.null(input$source) || is.null(input$regions) || length(selected_surveys) == 0) {
-    return(all_data[0, ])
-  }
-  df <- all_data
-  if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
-  if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
+  req(input$years) # We always need years
   
-  df %>% filter(source %in% input$source, survey_label %in% selected_surveys)
+  df <- all_data
+  
+  # 1. Filter Years
+  if (!"ALL" %in% input$years) df <- df %>% filter(wy %in% input$years)
+  
+  # 2. Map Tab Logic: If on map tab, stop here (ignore region/survey filters)
+  if (identical(input$active_tab, "Longfin Smelt Distribution")) {
+    return(df)
+  }
+  
+  # 3. Effort/Catch Tab Logic: Filter by Region and Source
+  req(input$regions, input$source)
+  if (!"ALL" %in% input$regions) df <- df %>% filter(oldregionupdate %in% input$regions)
+  df <- df %>% filter(source %in% input$source)
+  
+  # 4. Filter by Surveys (Only if they exist)
+  selected_surveys <- c(input$surveys_20mm, input$surveys_sls)
+  if (!is.null(selected_surveys) && length(selected_surveys) > 0) {
+    df <- df %>% filter(survey_label %in% selected_surveys)
+  }
+  
+  return(df)
 })
 
-# --- 5. VALUE BOXES ---
 # --- 5. VALUE BOXES ---
 
 # Fix 1: Total Tows (Summing physical tows, ignoring length rows)
@@ -274,11 +305,9 @@ output$effort_table <- renderDT({
   df <- all_r()
   
   if (nrow(df) == 0) {
-    return(datatable(data.frame(Status = "No Data Selected"), dom = 't', rownames = FALSE))
+    return(datatable(data.frame(Status = "No Data Selected"), rownames = FALSE, options = list(dom = 't')))
   }
 
-  # --- CRUCIAL FIX ---
-  # Collapse the "Length" rows back into "Station Visit" rows immediately.
   # This ensures we don't overcount tows because of fish lengths.
   effort_df <- df %>%
     distinct(oldregionupdate, station, wy, survey_label, numTows)
@@ -322,9 +351,10 @@ output$effort_table <- renderDT({
     caption_text <- "Total Annual Tows per Station by Water Year"
   }
   
-  datatable(
+datatable(
     eff_wide, 
     extensions = 'FixedColumns',
+    rownames = FALSE, # Moved this outside of options
     options = list(
       dom = 't', 
       paging = FALSE, 
@@ -336,8 +366,7 @@ output$effort_table <- renderDT({
         list(className = 'dt-center', targets = "_all"),
         list(width = '80px', targets = 0) 
       )
-    ), 
-    rownames = FALSE,
+    ),
     caption = htmltools::tags$caption(
       style = 'caption-side: top; text-align: center; color: #666; font-weight: bold;',
       caption_text
@@ -359,12 +388,13 @@ output$catch_plot_faceted <- renderPlotly({
     
     plot_data <- data %>%
       mutate(source = factor(source, levels = c("SLS", "20mm"))) %>%
-      mutate(x_axis = factor(survey_label, levels = c(sls_levels, mm_levels))) %>%
+      mutate(x_axis = factor(survey_label, levels = intersect(c(sls_levels, mm_levels), unique(data$survey_label)))) %>%
       group_by(x_axis, source, oldregionupdate) %>% 
-      summarise(RegionalCatch = sum(count, na.rm = TRUE), .groups = "drop") %>%
+      # CRUCIAL: Sum total_len_freq to avoid overcounting the repeated 'count' column
+      summarise(RegionalCatch = sum(total_len_freq, na.rm = TRUE), .groups = "drop") %>%
       mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
     
-    x_label <- NULL # Changed from "Survey" to NULL
+    x_label <- NULL 
     facet_scales <- "free" 
     
   } else {
@@ -373,10 +403,11 @@ output$catch_plot_faceted <- renderPlotly({
       mutate(source = factor(source, levels = c("SLS", "20mm"))) %>%
       mutate(x_axis = factor(wy)) %>% 
       group_by(x_axis, wy, source, oldregionupdate, yearType) %>% 
-      summarise(RegionalCatch = sum(count, na.rm = TRUE), .groups = "drop") %>%
+      # CRUCIAL: Sum total_len_freq here as well
+      summarise(RegionalCatch = sum(total_len_freq, na.rm = TRUE), .groups = "drop") %>%
       mutate(oldregionupdate = factor(oldregionupdate, levels = region_order))
     
-    x_label <- NULL # Changed from "Water Year" to NULL
+    x_label <- NULL
     facet_scales <- "free_y"
     
     year_totals <- plot_data %>%
@@ -386,6 +417,7 @@ output$catch_plot_faceted <- renderPlotly({
 
   wy_legend_text <- "<b>W:</b> Wet | <b>AN:</b> Above Normal | <b>BN:</b> Below Normal | <b>D:</b> Dry | <b>C:</b> Critical"
 
+  # 3. Build the ggplot
   p <- ggplot(plot_data, aes(x = x_axis, y = RegionalCatch)) +
     geom_col(aes(fill = oldregionupdate), color = "black", linewidth = 0.3) +
     
@@ -396,27 +428,32 @@ output$catch_plot_faceted <- renderPlotly({
     facet_wrap(~source, ncol = 1, scales = facet_scales) +
     
     scale_fill_manual(values = region_colors, name = NULL) +
-    scale_y_continuous(labels = scales::label_comma(), expand = expansion(mult = c(0, 0.35))) +
+    scale_y_continuous(labels = scales::label_comma(), expand = expansion(mult = c(0, 0.45))) +
     
     theme_minimal() +
     labs(x = x_label, y = "Total Catch") +
     theme(
       strip.text = element_text(size = 12, face = "bold"),
       panel.spacing = unit(2.5, "lines"), 
-      axis.title.x = element_blank(), # Explicitly remove X title space
-      axis.title.y = element_text(margin = margin(r = 10)), 
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(margin = margin(r = 15)), # Extra space for label
       axis.text.x = element_text(angle = 45, hjust = 1),
       panel.grid = element_blank(),
       axis.line = element_line(color = "black")
     )
 
+  # 4. Convert to Plotly with Margin/Standoff Fixes
   ggplotly(p) %>% 
     layout(
-      margin = list(t = 60, b = 130), 
-      legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.26),
+      # Increase bottom margin (b) to 150 and left margin (l) to 80
+      margin = list(t = 60, b = 150, l = 80), 
+      # standoff moves the "Total Catch" label away from the numbers
+      yaxis = list(title = list(standoff = 20)),
+      yaxis2 = list(title = list(standoff = 20)),
+      legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.35),
       annotations = if(!is_single_year) {
         list(list(
-          x = 0.5, y = -0.22, 
+          x = 0.5, y = -0.28, 
           text = wy_legend_text,
           showarrow = FALSE,
           xref = 'paper', yref = 'paper',
@@ -429,7 +466,59 @@ output$catch_plot_faceted <- renderPlotly({
 
 
 
+create_map_obj <- function(df, max_cpue, title, proj_color) {
+  leaflet() %>%
+    addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
+    # WATER: Light blue color, lower opacity
+    addPolygons(data = WW_Delta, weight = 0.8, color = "#5dade2", 
+                fillColor = "#B3E5FC", fillOpacity = 0.5) %>%
+    # ZEROS
+    addCircleMarkers(data = df %>% filter(station_total_count == 0),
+                     lng = ~X, lat = ~Y, radius = 2, color = "grey50", weight = 1, fillOpacity = 0.2) %>%
+    # CATCH
+    addCircleMarkers(data = df %>% filter(station_total_count > 0),
+                     lng = ~X, lat = ~Y,
+                     radius = ~sqrt(station_cpue / max_cpue) * 15 + 2,
+                     color = proj_color, fillColor = proj_color, fillOpacity = 0.7, weight = 1,
+                     label = ~paste0("Station: ", station, " | CPUE: ", round(station_cpue, 1))) %>%
+    addControl(html = paste0("<div style='background:white;padding:3px;border:1px solid grey;'><b>", title, "</b></div>"), 
+               position = "topright")
+}
 
+# 4. SYNCED MAPS CONTAINER
+output$synced_maps_container <- renderUI({
+  # Stop if "ALL" is selected or no snapshot is picked
+  req(input$current_map_survey, input$years)
+  if ("ALL" %in% input$years) return(NULL)
+  
+  # Ensure we have numeric years
+  years_vec <- sort(as.numeric(input$years))
+  req(length(years_vec) > 0) # Safety check
+  
+  validate(need(length(years_vec) <= 2, "Please select max 2 specific years for comparison."))
+  
+  map_df <- all_data %>% 
+    filter(wy %in% years_vec, survey_label == input$current_map_survey) %>% 
+    distinct(wy, station, .keep_all = TRUE)
+    
+  max_val <- max(map_df$station_cpue, na.rm = TRUE)
+  if(is.infinite(max_val) || max_val <= 0) max_val <- 1
+  
+  # Map 1
+  d1 <- map_df %>% filter(wy == years_vec[1])
+  c1 <- if(nrow(d1) > 0 && !is.na(first(d1$source)) && first(d1$source) == "SLS") "hotpink" else "#2ecc71"
+  m1 <- create_map_obj(d1, max_val, paste(years_vec[1], input$current_map_survey), c1)
+  
+  if(length(years_vec) == 2) {
+    # Map 2
+    d2 <- map_df %>% filter(wy == years_vec[2])
+    c2 <- if(nrow(d2) > 0 && !is.na(first(d2$source)) && first(d2$source) == "SLS") "hotpink" else "#2ecc71"
+    m2 <- create_map_obj(d2, max_val, paste(years_vec[2], input$current_map_survey), c2)
+    leafsync::sync(m1, m2, ncol = 1) 
+  } else {
+    m1
+  }
+})
 
 ```
 
@@ -444,13 +533,20 @@ plotlyOutput("catch_plot_faceted")
 ```
 
 
-
-# Longfin Smelt Distribution
-WIP
-
 # Longfin Smelt Length Frequency
 
 WIP
 
 # Water Quality 
 WIP
+
+
+# Longfin Smelt Distribution
+
+## Row {height=100%}
+### Spatial Comparison (Synced Zoom)
+```{r}
+tags$div(style = "height: 85vh;", uiOutput("synced_maps_container"))
+```
+
+
