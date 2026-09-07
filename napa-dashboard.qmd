@@ -224,6 +224,15 @@ all_r <- reactive({
   return(df)
 })
 
+# --- LENGTH DATA (expanded to one row per fish, filtered to measured fish only) ---
+length_r <- reactive({
+  df <- all_r() %>% 
+    filter(!is.na(length), !is.na(total_len_freq), total_len_freq > 0) %>%
+    mutate(total_len_freq = as.integer(round(total_len_freq))) %>%
+    tidyr::uncount(total_len_freq)   # one row per actual fish
+  df$survey_label <- fct_drop(df$survey_label)
+  df
+})
 
 # --- 5. VALUE BOXES ---
 
@@ -494,18 +503,119 @@ output$synced_maps_container <- renderUI({
   
   # Build Map 1
   d1 <- map_df %>% filter(wy == years_vec[1])
-  c1 <- if(nrow(d1) > 0 && first(d1$source) == "SLS") "hotpink" else "#2ecc71"
+  c1 <- if(nrow(d1) > 0 && first(d1$source) == "SLS") "#EF819E" else "#597C2B"
   m1 <- create_map_obj(d1, max_val, paste(years_vec[1], input$current_map_survey), c1, map_height)
   
   if(length(years_vec) == 2) {
     # Build Map 2
     d2 <- map_df %>% filter(wy == years_vec[2])
-    c2 <- if(nrow(d2) > 0 && first(d2$source) == "SLS") "hotpink" else "#2ecc71"
+    c2 <- if(nrow(d2) > 0 && first(d2$source) == "SLS") "#EF819E" else "#597C2B"
     m2 <- create_map_obj(d2, max_val, paste(years_vec[2], input$current_map_survey), c2, map_height)
     leafsync::sync(m1, m2, ncol = 1) 
   } else {
     m1
   }
+})
+
+
+# --- ENFORCE MAX 2 SELECTIONS (years and regions) ---
+observeEvent(input$years, {
+  yrs <- input$years
+  is_length_tab <- "Longfin Smelt Length Frequency" %in% input$active_tab
+  
+  if (is_length_tab) {
+    # On the Length Frequency page, "ALL" isn't allowed - max 2 specific years
+    yrs <- yrs[yrs != "ALL"]
+    if (length(yrs) > 2) yrs <- tail(yrs, 2)
+    if (!identical(yrs, input$years)) {
+      updateSelectizeInput(session, "years", selected = yrs)
+    }
+  } else {
+    # On other pages, ALL behaves as its own single choice; otherwise cap at 2
+    if (length(yrs) > 1 && "ALL" %in% yrs) {
+      updateSelectizeInput(session, "years", selected = "ALL")
+    } else if (length(yrs) > 2) {
+      updateSelectizeInput(session, "years", selected = tail(yrs, 2))
+    }
+  }
+}, ignoreNULL = FALSE)
+
+
+
+output$length_boxplot <- renderPlot({
+  df <- length_r()
+  
+  if (nrow(df) == 0) {
+    return(
+      ggplot() + 
+        annotate("text", x = 0, y = 0, label = "No Data Selected", size = 6) + 
+        theme_void()
+    )
+  }
+  
+  # Force correct biological/seasonal order
+  mm_levels <- paste("20mm", 1:9)
+  all_levels <- c(sls_custom_order, mm_levels)
+  df$survey_label <- factor(as.character(df$survey_label), 
+                            levels = intersect(all_levels, unique(as.character(df$survey_label))))
+  
+  df <- df %>%
+    mutate(source = factor(source, levels = c("SLS", "20mm")))
+  
+  multi_region <- n_distinct(df$oldregionupdate) > 1
+  multi_year   <- n_distinct(df$wy) > 1
+  
+  row_vars <- c()
+  if (multi_region) row_vars <- c(row_vars, "oldregionupdate")
+  if (multi_year)   row_vars <- c(row_vars, "wy")
+  
+  facet_formula <- if (length(row_vars) > 0) {
+    as.formula(paste(paste(row_vars, collapse = " + "), "~ month"))
+  } else {
+    as.formula(". ~ month")
+  }
+  
+  max_len <- max(df$length, na.rm = TRUE)
+  
+  year_text   <- paste(sort(unique(df$wy)), collapse = " vs ")
+  region_text <- paste(unique(df$oldregionupdate), collapse = " vs ")
+  
+  ggplot(df, aes(x = survey_label, y = length, fill = source)) +
+    geom_jitter(aes(color = source), width = 0.2, alpha = 0.2, show.legend = FALSE) +
+    geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+    scale_y_continuous(
+      limits = c(0, max_len + 5),
+      breaks = seq(0, ceiling(max_len / 5) * 5, by = 5),
+      expand = c(0, 0)
+    ) +
+    facet_grid(facet_formula, scales = "free_x", space = "free_x", switch = "x") +
+    scale_fill_manual(values = c("SLS" = "#EF819E", "20mm" = "#597C2B")) +
+    scale_color_manual(values = c("SLS" = "#EF819E", "20mm" = "#597C2B")) +
+    labs(
+      x = NULL,
+      y = "Fork Length (mm)",
+      title = "Longfin Smelt Growth by Gear Type",
+      subtitle = paste0(region_text, " | ", year_text),
+      fill = "Gear Type"
+    ) +
+    theme_minimal(base_size = 18) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 5)),
+      plot.subtitle = element_text(hjust = 0.5, size = 14, margin = margin(b = 15)),
+      axis.title.y = element_text(size = 16, face = "bold", color = "black", margin = margin(r = 10)),
+      axis.text.y = element_text(size = 14, color = "black", face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12, color = "black"),
+      strip.text = element_text(size = 14, face = "bold", color = "black"),
+      strip.placement = "outside",
+      strip.background = element_rect(fill = "grey95", color = "grey80"),
+      panel.grid = element_blank(),
+      axis.line = element_line(color = "black", linewidth = 0.8),
+      panel.spacing = unit(0.1, "lines"),
+      legend.title = element_text(size = 14, face = "bold"),
+      legend.text = element_text(size = 14, face = "bold"),
+      legend.key.size = unit(1.5, "lines"),
+      legend.position = "top"
+    )
 })
 
 ```
@@ -523,7 +633,11 @@ plotlyOutput("catch_plot_faceted")
 
 # Longfin Smelt Length Frequency
 
-WIP
+## Row {height=100%}
+### Length Distribution by Survey
+```{r}
+plotOutput("length_boxplot", height = "750px")
+```
 
 # Water Quality 
 WIP
