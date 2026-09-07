@@ -545,24 +545,22 @@ output$synced_maps_container <- renderUI({
 })
 
 
-# --- ENFORCE MAX 2 SELECTIONS (years and regions) ---
+# ---  ---
 observeEvent(input$years, {
   yrs <- input$years
   is_length_tab <- "Longfin Smelt Length Frequency" %in% input$active_tab
   
   if (is_length_tab) {
-    # On the Length Frequency page, "ALL" isn't allowed - max 2 specific years
+    # Length Frequency page only: no ALL, max 2 specific years
     yrs <- yrs[yrs != "ALL"]
     if (length(yrs) > 2) yrs <- tail(yrs, 2)
     if (!identical(yrs, input$years)) {
       updateSelectizeInput(session, "years", selected = yrs)
     }
   } else {
-    # On other pages, ALL behaves as its own single choice; otherwise cap at 2
+    # Every other page: unlimited years, but ALL still collapses other picks into itself
     if (length(yrs) > 1 && "ALL" %in% yrs) {
       updateSelectizeInput(session, "years", selected = "ALL")
-    } else if (length(yrs) > 2) {
-      updateSelectizeInput(session, "years", selected = tail(yrs, 2))
     }
   }
 }, ignoreNULL = FALSE)
@@ -723,8 +721,12 @@ output$water_quality_plot <- renderPlot({
   param_label <- names(wq_param_choices)[wq_param_choices == input$wq_param]
   
   if (multi_year) {
-    year_colors <- c("#4A7FB5", "#D9822B")
-    names(year_colors) <- years_present
+  n_yrs <- length(years_present)
+  year_colors <- if (n_yrs <= 2) {
+    setNames(c("#4A7FB5", "#D9822B")[1:n_yrs], years_present)
+  } else {
+    setNames(scales::hue_pal()(n_yrs), years_present)
+  }
     
     p <- ggplot(df, aes(x = survey_label, y = value, group = wy, color = wy)) +
       geom_line(linewidth = 1) +
