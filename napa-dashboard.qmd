@@ -570,14 +570,15 @@ observeEvent(input$years, {
   is_length_tab <- "Longfin Smelt Length Frequency" %in% input$active_tab
   
   if (is_length_tab) {
-    # Length Frequency page only: no ALL, max 2 specific years
+    # Keep the logic that removes "ALL"
     yrs <- yrs[yrs != "ALL"]
-    if (length(yrs) > 2) yrs <- tail(yrs, 2)
+    
+    # REMOVED the "tail(yrs, 2)" line so the user can select 3+ years
+    
     if (!identical(yrs, input$years)) {
       updateSelectizeInput(session, "years", selected = yrs)
     }
   } else {
-    # Every other page: unlimited years, but ALL still collapses other picks into itself
     if (length(yrs) > 1 && "ALL" %in% yrs) {
       updateSelectizeInput(session, "years", selected = "ALL")
     }
@@ -586,13 +587,39 @@ observeEvent(input$years, {
 
 
 
+output$length_boxplot_ui <- renderUI({
+  # Handle "ALL" case
+  if ("ALL" %in% input$years) {
+    return(
+      div(style = "margin-top: 100px; text-align: center;",
+          h4("Please deselect 'ALL' to compare specific years.")
+      )
+    )
+  }
+  
+  # Handle more than 2 years or 0 years
+  if (is.null(input$years) || length(input$years) == 0 || length(input$years) > 2) {
+    return(
+      div(style = "margin-top: 1px; text-align: center;",
+          h4("Please select 1 or 2 specific years for comparison.")
+      )
+    )
+  }
+  
+  # If validation passes, show the plot output container
+  plotOutput("length_boxplot", height = "750px")
+})
+
+# 2. THE ARTIST: Draws the actual plot
 output$length_boxplot <- renderPlot({
+  # Get the reactive data
   df <- length_r()
   
+  # Safety check: If data is empty, show a blank plot with a message
   if (nrow(df) == 0) {
     return(
       ggplot() + 
-        annotate("text", x = 0, y = 0, label = "No Data Selected", size = 6) + 
+        annotate("text", x = 0, y = 0, label = "No Data Available for Selection", size = 6) + 
         theme_void()
     )
   }
@@ -610,8 +637,6 @@ output$length_boxplot <- renderPlot({
     )
   
   is_all_regions <- "ALL" %in% input$regions
-  
-  # If ALL regions selected, pool them (no facet row for region)
   multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
   multi_year   <- n_distinct(df$wy) > 1
   
@@ -622,11 +647,9 @@ output$length_boxplot <- renderPlot({
   year_text   <- paste(years_present, collapse = " vs ")
   region_text <- if (is_all_regions) "All Regions (Combined)" else paste(unique(df$oldregionupdate), collapse = " vs ")
   
-  # Use a high percentile instead of the true max, so a few extreme outliers
-  # don't stretch the axis - but the data itself is untouched.
   y_upper <- 50
   
-  # --- Conditional color scheme ---
+  # Setup colors
   if (multi_year) {
     fill_var <- "wy"
     fill_colors <- c("#4A7FB5", "#D9822B")
@@ -638,6 +661,7 @@ output$length_boxplot <- renderPlot({
     legend_title <- "Gear Type"
   }
   
+  # Build Plot
   p <- ggplot(df, aes(x = survey_label, y = length, fill = .data[[fill_var]]))
   
   if (multi_year) {
@@ -654,37 +678,25 @@ output$length_boxplot <- renderPlot({
   }
   
   p +
-    scale_y_continuous(
-        breaks = seq(0, y_upper, by = 5),
-        expand = c(0, 0)
-    ) +
+    scale_y_continuous(breaks = seq(0, y_upper, by = 5), expand = c(0, 0)) +
     coord_cartesian(ylim = c(0, y_upper)) +
     facet_grid(facet_formula, scales = "free_x", space = "free_x", switch = "x") +
     scale_fill_manual(values = fill_colors) +
     scale_color_manual(values = fill_colors) +
     labs(
-      x = NULL,
-      y = "Fork Length (mm)",
+      x = NULL, y = "Fork Length (mm)",
       title = "Longfin Smelt Growth by Gear Type",
       subtitle = paste0(region_text, " | ", year_text),
       fill = legend_title
     ) +
     theme_minimal(base_size = 18) +
     theme(
-      plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 5)),
-      plot.subtitle = element_text(hjust = 0.5, size = 14, margin = margin(b = 15)),
-      axis.title.y = element_text(size = 16, face = "bold", color = "black", margin = margin(r = 10)),
-      axis.text.y = element_text(size = 14, color = "black", face = "bold"),
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 12, color = "black"),
-      strip.text = element_text(size = 14, face = "bold", color = "black"),
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20),
+      plot.subtitle = element_text(hjust = 0.5, size = 14),
+      axis.text.x = element_text(angle = 45, hjust = 1),
       strip.placement = "outside",
-      strip.background = element_rect(fill = "grey95", color = "grey80"),
       panel.grid = element_blank(),
-      axis.line = element_line(color = "black", linewidth = 0.8),
-      panel.spacing = unit(0.1, "lines"),
-      legend.title = element_text(size = 14, face = "bold"),
-      legend.text = element_text(size = 14, face = "bold"),
-      legend.key.size = unit(1.5, "lines"),
+      axis.line = element_line(color = "black"),
       legend.position = "top"
     )
 })
@@ -814,7 +826,7 @@ plotlyOutput("catch_plot_faceted")
 ## Row {height=100%}
 ### Length Distribution by Survey
 ```{r}
-plotOutput("length_boxplot", height = "750px")
+uiOutput("length_boxplot_ui")
 ```
 
 # Water Quality 
