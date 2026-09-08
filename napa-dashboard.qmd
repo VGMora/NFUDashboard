@@ -113,7 +113,7 @@ region_colors <- c(
   "San Pablo & Carquinez Strait"        = "#80b1d3", 
   "Napa River"                          = "#bebada", 
   "Suisun Bay & Marsh"                  = "#fdb462", 
-  "Confluence"                          = "#ffffb3", 
+  "Confluence"                          = "#c7c705", 
   "Sacramento River System"             = "#fb8072", 
   "Central & South Delta"               = "#8dd3c7"
 )
@@ -199,9 +199,10 @@ output$dynamic_sidebar <- renderUI({
     tagList(
       hr(),
       selectizeInput("regions", "Select Region(s):", 
-                     choices = c("ALL", region_order),
-                     selected = "Napa River", multiple = TRUE,
-                     options = list(plugins = list("remove_button"))),
+               choices = c("ALL", region_order),
+               selected = if (is.null(isolate(input$regions))) "Napa River" else isolate(input$regions), 
+               multiple = TRUE,
+               options = list(plugins = list("remove_button"))),
       hr(),
       checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
                          selected = c("20mm", "SLS"), inline = TRUE),
@@ -214,7 +215,8 @@ output$dynamic_sidebar <- renderUI({
       hr(),
       selectizeInput("regions", "Select Region(s):", 
                      choices = c("ALL", region_order),
-                     selected = "Napa River", multiple = TRUE,
+                     selected = if (is.null(isolate(input$regions))) "Napa River" else isolate(input$regions), 
+multiple = TRUE,
                      options = list(plugins = list("remove_button"))),
       hr(),
       checkboxGroupInput("source", "Project:", choices = c("20mm", "SLS"), 
@@ -565,6 +567,8 @@ output$synced_maps_container <- renderUI({
 
 
 # ---  ---
+prev_years <- reactiveVal(NULL)
+
 observeEvent(input$years, {
   yrs <- input$years
   is_length_tab <- "Longfin Smelt Length Frequency" %in% input$active_tab
@@ -578,13 +582,67 @@ observeEvent(input$years, {
     if (!identical(yrs, input$years)) {
       updateSelectizeInput(session, "years", selected = yrs)
     }
-  } else {
-    if (length(yrs) > 1 && "ALL" %in% yrs) {
-      updateSelectizeInput(session, "years", selected = "ALL")
-    }
+    return()
   }
+  
+  old <- prev_years()
+  
+  if (is.null(old)) {
+    prev_years(yrs)
+    return()
+  }
+  
+  newly_added <- setdiff(yrs, old)
+  
+  if ("ALL" %in% newly_added && length(yrs) > 1) {
+    # "ALL" was just clicked -> clear everything else
+    updateSelectizeInput(session, "years", selected = "ALL")
+    prev_years("ALL")
+    return()
+  }
+  
+  if ("ALL" %in% yrs && length(yrs) > 1) {
+    # A specific year was just added while ALL was already active -> drop ALL
+    new_selection <- setdiff(yrs, "ALL")
+    updateSelectizeInput(session, "years", selected = new_selection)
+    prev_years(new_selection)
+    return()
+  }
+  
+  prev_years(yrs)
 }, ignoreNULL = FALSE)
 
+
+prev_regions <- reactiveVal(NULL)
+
+observeEvent(input$regions, {
+  regs <- input$regions
+  old <- prev_regions()
+  
+  if (is.null(old)) {
+    prev_regions(regs)
+    return()
+  }
+  
+  newly_added <- setdiff(regs, old)
+  
+  if ("ALL" %in% newly_added && length(regs) > 1) {
+    # "ALL" was just clicked -> clear everything else
+    updateSelectizeInput(session, "regions", selected = "ALL")
+    prev_regions("ALL")
+    return()
+  }
+  
+  if ("ALL" %in% regs && length(regs) > 1) {
+    # A specific region was just added while ALL was already active -> drop ALL
+    new_selection <- setdiff(regs, "ALL")
+    updateSelectizeInput(session, "regions", selected = new_selection)
+    prev_regions(new_selection)
+    return()
+  }
+  
+  prev_regions(regs)
+})
 
 
 output$length_boxplot_ui <- renderUI({
@@ -721,19 +779,26 @@ wq_r <- reactive({
   df <- all_r()
   req(df)
   req(input$wq_param)
-  
-  # Remove fish-level duplication - keep one row per station visit
+
+  # --- FIX: Normalize ALL into "all regions selected"
+  regions_selected <- input$regions
+  if ("ALL" %in% regions_selected) {
+    regions_selected <- region_order
+  }
+
+  # Remove duplicates (1 row per station visit)
   df <- df %>%
-    distinct(oldregionupdate, wy, survey_label, source, station, 
+    distinct(oldregionupdate, wy, survey_label, source, station,
              secchi, tempSurf, salSurf, salBot, fnu, ntu)
-  
-  is_all_regions <- "ALL" %in% input$regions
-  multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
-  
-  group_vars <- c("wy", "survey_label", "source")
-if (!is_all_regions) group_vars <- c("oldregionupdate", group_vars)
-  
+
+  # REGION logic behaves consistently now
+  multi_region <- n_distinct(df$oldregionupdate[df$oldregionupdate %in% regions_selected]) > 1
+
+  # Define grouping variables
+group_vars <- c("oldregionupdate", "wy", "survey_label", "source")
+
   df %>%
+    filter(oldregionupdate %in% regions_selected) %>%
     group_by(across(all_of(group_vars))) %>%
     summarise(value = mean(.data[[input$wq_param]], na.rm = TRUE), .groups = "drop") %>%
     mutate(value = ifelse(is.nan(value), NA, value))
