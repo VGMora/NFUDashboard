@@ -588,7 +588,7 @@ observeEvent(input$years, {
 
 
 output$length_boxplot_ui <- renderUI({
-  # Handle "ALL" case
+  # 1. Handle "ALL" Years case
   if ("ALL" %in% input$years) {
     return(
       div(style = "margin-top: 100px; text-align: center;",
@@ -597,11 +597,20 @@ output$length_boxplot_ui <- renderUI({
     )
   }
   
-  # Handle more than 2 years or 0 years
+  # 2. Handle Years validation
   if (is.null(input$years) || length(input$years) == 0 || length(input$years) > 2) {
     return(
-      div(style = "margin-top: 1px; text-align: center;",
+      div(style = "margin-top: 100px; text-align: center;",
           h4("Please select 1 or 2 specific years for comparison.")
+      )
+    )
+  }
+
+  # 3. NEW: Handle Region validation (Cap at 3 for clarity on one graph)
+  if ("ALL" %in% input$regions || length(input$regions) > 3) {
+    return(
+      div(style = "margin-top: 100px; text-align: center;",
+          h4("Please select 1 to 3 specific regions to compare on this graph.")
       )
     )
   }
@@ -615,7 +624,6 @@ output$length_boxplot <- renderPlot({
   # Get the reactive data
   df <- length_r()
   
-  # Safety check: If data is empty, show a blank plot with a message
   if (nrow(df) == 0) {
     return(
       ggplot() + 
@@ -636,35 +644,42 @@ output$length_boxplot <- renderPlot({
       wy = factor(wy)
     )
   
-  is_all_regions <- "ALL" %in% input$regions
-  multi_region <- !is_all_regions && n_distinct(df$oldregionupdate) > 1
+  # Determine logic states
   multi_year   <- n_distinct(df$wy) > 1
+  multi_region <- n_distinct(df$oldregionupdate) > 1
   
-  row_vars <- if (multi_region) "oldregionupdate" else "."
-  facet_formula <- as.formula(paste(row_vars, "~ month"))
+  # CHANGE: Set row facet to "." so everything stays on the SAME graph
+  facet_formula <- as.formula(". ~ month")
   
   years_present <- sort(unique(as.character(df$wy)))
   year_text   <- paste(years_present, collapse = " vs ")
-  region_text <- if (is_all_regions) "All Regions (Combined)" else paste(unique(df$oldregionupdate), collapse = " vs ")
+  region_text <- paste(unique(df$oldregionupdate), collapse = " vs ")
   
   y_upper <- 50
   
-  # Setup colors
+  # CHANGE: Updated Color Logic to prioritize Regions if multiple are selected
   if (multi_year) {
+    # If comparing years, keep Year colors
     fill_var <- "wy"
     fill_colors <- c("#4A7FB5", "#D9822B")
     names(fill_colors) <- years_present
     legend_title <- "Water Year"
+  } else if (multi_region) {
+    # If one year but multiple regions, use Region colors
+    fill_var <- "oldregionupdate"
+    fill_colors <- region_colors # Uses your existing global region_colors vector
+    legend_title <- "Region"
   } else {
+    # Default to gear type colors
     fill_var <- "source"
     fill_colors <- c("SLS" = "#EF819E", "20mm" = "#597C2B")
     legend_title <- "Gear Type"
   }
   
-  # Build Plot
+  # Build Plot (Logic remains identical, but fill_var is now dynamic)
   p <- ggplot(df, aes(x = survey_label, y = length, fill = .data[[fill_var]]))
   
-  if (multi_year) {
+  if (multi_year || multi_region) {
     p <- p +
       geom_jitter(aes(color = .data[[fill_var]]), 
                   position = position_jitterdodge(jitter.width = 0.5, jitter.height = 0.6, dodge.width = 0.7),
@@ -685,7 +700,7 @@ output$length_boxplot <- renderPlot({
     scale_color_manual(values = fill_colors) +
     labs(
       x = NULL, y = "Fork Length (mm)",
-      title = "Longfin Smelt Growth by Gear Type",
+      title = "Longfin Smelt Growth",
       subtitle = paste0(region_text, " | ", year_text),
       fill = legend_title
     ) +
